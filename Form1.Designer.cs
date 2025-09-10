@@ -28,105 +28,118 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "Form1";
-
-            this.button1 = new System.Windows.Forms.Button();
-            this.labelPoint = new System.Windows.Forms.Label();
-            this.buttonUpgrade = new System.Windows.Forms.Button();
-            this.labelUpgradeCost = new System.Windows.Forms.Label();
-            this.buttonPrestige = new System.Windows.Forms.Button();
-            this.labelPrestigeCost = new System.Windows.Forms.Label();
-            this.labelUpgradeInfo = new System.Windows.Forms.Label();
-            this.buttonDebug = new System.Windows.Forms.Button();
-            this.SuspendLayout();
+            button1 = new Button();
+            labelPoint = new Label();
+            buttonUpgrade = new Button();
+            labelUpgradeCost = new Label();
+            buttonPrestige = new Button();
+            labelPrestigeCost = new Label();
+            labelUpgradeInfo = new Label();
+            buttonDebug = new Button();
+            progressBarCooldown = new ProgressBar();
+            SuspendLayout();
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(30, 30);
-            this.button1.Name = "button1";
-            this.progressBarCooldown = new System.Windows.Forms.ProgressBar();
-            this.progressBarCooldown.Location = new System.Drawing.Point(30, 70); // just below button1
-            this.progressBarCooldown.Size = new System.Drawing.Size(100, 10);
-            this.progressBarCooldown.Maximum = cooldownDuration;
-            this.Controls.Add(this.progressBarCooldown);
-            this.button1.Size = new System.Drawing.Size(100, 30);
-            this.button1.Text = "Click Me";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            button1.Location = new Point(30, 30);
+            button1.Name = "button1";
+            button1.Size = new Size(100, 30);
+            button1.TabIndex = 1;
+            button1.Text = "Click Me";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
             // 
             // labelPoint
             // 
-            this.labelPoint.Location = new System.Drawing.Point(140, 30);
-            this.labelPoint.Name = "labelPoint";
-            this.labelPoint.Size = new System.Drawing.Size(80, 30);
-            this.labelPoint.Text = "0";
-            this.labelPoint.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            labelPoint.Location = new Point(140, 30);
+            labelPoint.Name = "labelPoint";
+            labelPoint.Size = new Size(80, 30);
+            labelPoint.TabIndex = 2;
+            labelPoint.Text = "0";
+            labelPoint.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // buttonUpgrade
             // 
-            this.buttonUpgrade.Location = new System.Drawing.Point(30, 70);
-            this.buttonUpgrade.Name = "buttonUpgrade";
-            this.buttonUpgrade.Size = new System.Drawing.Size(100, 30);
-            this.buttonUpgrade.Text = "Upgrade";
-            this.buttonUpgrade.UseVisualStyleBackColor = true;
-            this.buttonUpgrade.Click += new System.EventHandler(this.buttonUpgrade_Click);
+            buttonUpgrade.Location = new Point(30, 110);
+            buttonUpgrade.Name = "buttonUpgrade";
+            buttonUpgrade.Size = new Size(100, 30);
+            buttonUpgrade.TabIndex = 3;
+            buttonUpgrade.Text = "Upgrade";
+            buttonUpgrade.UseVisualStyleBackColor = true;
+            buttonUpgrade.Click += buttonUpgrade_Click;
             // 
             // labelUpgradeCost
             // 
-            this.labelUpgradeCost.Location = new System.Drawing.Point(140, 70);
-            this.labelUpgradeCost.Name = "labelUpgradeCost";
-            this.labelUpgradeCost.Size = new System.Drawing.Size(120, 30);
-            this.labelUpgradeCost.Text = "Upgrade Cost: 5";
-            this.labelUpgradeCost.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // labelUpgradeInfo
-            // 
-            this.labelUpgradeInfo.Location = new System.Drawing.Point(270, 70);
-            this.labelUpgradeInfo.Name = "labelUpgradeInfo";
-            this.labelUpgradeInfo.Size = new System.Drawing.Size(300, 30);
-            this.labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.01])";
-            this.labelUpgradeInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            labelUpgradeCost.Location = new Point(136, 110);
+            labelUpgradeCost.Name = "labelUpgradeCost";
+            labelUpgradeCost.Size = new Size(120, 30);
+            labelUpgradeCost.TabIndex = 4;
+            labelUpgradeCost.Text = "Upgrade Cost: 5";
+            labelUpgradeCost.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // buttonPrestige
             // 
-            this.buttonPrestige.Location = new System.Drawing.Point(30, 110);
-            this.buttonPrestige.Name = "buttonPrestige";
-            this.buttonPrestige.Size = new System.Drawing.Size(100, 30);
-            this.buttonPrestige.Text = "Prestige";
-            this.buttonPrestige.UseVisualStyleBackColor = true;
-            this.buttonPrestige.Click += new System.EventHandler(this.buttonPrestige_Click);
+            buttonPrestige.Location = new Point(30, 146);
+            buttonPrestige.Name = "buttonPrestige";
+            buttonPrestige.Size = new Size(100, 30);
+            buttonPrestige.TabIndex = 6;
+            buttonPrestige.Text = "Prestige";
+            buttonPrestige.UseVisualStyleBackColor = true;
+            buttonPrestige.Click += buttonPrestige_Click;
             // 
             // labelPrestigeCost
             // 
-            this.labelPrestigeCost.Location = new System.Drawing.Point(140, 110);
-            this.labelPrestigeCost.Name = "labelPrestigeCost";
-            this.labelPrestigeCost.Size = new System.Drawing.Size(120, 30);
-            this.labelPrestigeCost.Text = "Prestige Cost: 1000";
-            this.labelPrestigeCost.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            labelPrestigeCost.Location = new Point(136, 146);
+            labelPrestigeCost.Name = "labelPrestigeCost";
+            labelPrestigeCost.Size = new Size(120, 30);
+            labelPrestigeCost.TabIndex = 7;
+            labelPrestigeCost.Text = "Prestige Cost: 1000";
+            labelPrestigeCost.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // labelUpgradeInfo
+            // 
+            labelUpgradeInfo.Location = new Point(262, 110);
+            labelUpgradeInfo.Name = "labelUpgradeInfo";
+            labelUpgradeInfo.Size = new Size(300, 30);
+            labelUpgradeInfo.TabIndex = 5;
+            labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.01])";
+            labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
+            labelUpgradeInfo.Click += labelUpgradeInfo_Click;
             // 
             // buttonDebug
             // 
-            this.buttonDebug.Location = new System.Drawing.Point(670, 390);
-            this.buttonDebug.Name = "buttonDebug";
-            this.buttonDebug.Size = new System.Drawing.Size(100, 40);
-            this.buttonDebug.Text = "Debug x10";
-            this.buttonDebug.UseVisualStyleBackColor = true;
-            this.buttonDebug.Click += new System.EventHandler(this.buttonDebug_Click);
+            buttonDebug.Location = new Point(670, 390);
+            buttonDebug.Name = "buttonDebug";
+            buttonDebug.Size = new Size(100, 40);
+            buttonDebug.TabIndex = 8;
+            buttonDebug.Text = "Debug x10";
+            buttonDebug.UseVisualStyleBackColor = true;
+            buttonDebug.Click += buttonDebug_Click;
+            // 
+            // progressBarCooldown
+            // 
+            progressBarCooldown.Location = new Point(30, 70);
+            progressBarCooldown.Name = "progressBarCooldown";
+            progressBarCooldown.Size = new Size(100, 30);
+            progressBarCooldown.TabIndex = 0;
             // 
             // Form1
             // 
-            this.Controls.Add(this.button1);
-            this.Controls.Add(this.labelPoint);
-            this.Controls.Add(this.buttonUpgrade);
-            this.Controls.Add(this.labelUpgradeCost);
-            this.Controls.Add(this.labelUpgradeInfo);
-            this.Controls.Add(this.buttonPrestige);
-            this.Controls.Add(this.labelPrestigeCost);
-            this.Controls.Add(this.buttonDebug);
-            this.ResumeLayout(false);
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(800, 450);
+            Controls.Add(progressBarCooldown);
+            Controls.Add(button1);
+            Controls.Add(labelPoint);
+            Controls.Add(buttonUpgrade);
+            Controls.Add(labelUpgradeCost);
+            Controls.Add(labelUpgradeInfo);
+            Controls.Add(buttonPrestige);
+            Controls.Add(labelPrestigeCost);
+            Controls.Add(buttonDebug);
+            Name = "Form1";
+            Text = "Form1";
+            ResumeLayout(false);
         }
 
         #endregion

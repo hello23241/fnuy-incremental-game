@@ -1,4 +1,4 @@
-namespace WinFormsApp1
+﻿namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
@@ -16,14 +16,17 @@ namespace WinFormsApp1
         public Form1()
         {
             InitializeComponent();
+
+            progressBarCooldown.Maximum = cooldownDuration; // ← This is now valid
             labelPoint.Text = point.ToString();
             labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
             button1.Text = $"+{(int)pointMultiplier} points";
             UpdateUpgradeInfoLabel();
             cooldownTimer = new System.Windows.Forms.Timer();
-            cooldownTimer.Interval = 50; // update every 50ms
+            cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
         }
+
         private void CooldownTimer_Tick(object sender, EventArgs e)
         {
             cooldownElapsed += cooldownTimer.Interval;
@@ -97,6 +100,11 @@ namespace WinFormsApp1
         {
             double multiplier = 1.01 + prestigeBonus;
             labelUpgradeInfo.Text = $"improve click gain by 1 + x*({multiplier:F2})";
+        }
+
+        private void labelUpgradeInfo_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
