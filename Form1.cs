@@ -16,15 +16,14 @@
         public Form1()
         {
             InitializeComponent();
+            
+            progressBarCooldown.Maximum = cooldownDuration; // Now it uses the correct value
+            progressBarCooldown.Step = cooldownTimer.Interval; // Optional: makes stepping smoother
 
-            progressBarCooldown.Maximum = cooldownDuration; // ← This is now valid
-            labelPoint.Text = point.ToString();
-            labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
-            button1.Text = $"+{(int)pointMultiplier} points";
-            UpdateUpgradeInfoLabel();
             cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
+            
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
