@@ -8,7 +8,7 @@
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
         private System.Windows.Forms.Timer cooldownTimer;
-        private int cooldownDuration = 1000; // milliseconds
+        private int cooldownDuration = 1500; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
 
@@ -17,12 +17,12 @@
         {
             InitializeComponent();
 
-            cooldownTimer = new System.Windows.Forms.Timer(); // ← Move this up
-            cooldownTimer.Interval = 20; // instead of 50
-            progressBarCooldown.Step = cooldownTimer.Interval;
+            cooldownTimer = new System.Windows.Forms.Timer();
+            cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
 
-            progressBarCooldown.Maximum = cooldownDuration;
+            // Set progress bar maximum slightly above cooldownDuration
+            progressBarCooldown.Maximum = cooldownDuration + cooldownTimer.Interval;
             progressBarCooldown.Step = cooldownTimer.Interval;
         }
 
