@@ -16,15 +16,15 @@
         public Form1()
         {
             InitializeComponent();
-            
-            progressBarCooldown.Maximum = cooldownDuration; // Now it uses the correct value
-            progressBarCooldown.Step = cooldownTimer.Interval; // Optional: makes stepping smoother
 
-            cooldownTimer = new System.Windows.Forms.Timer();
+            cooldownTimer = new System.Windows.Forms.Timer(); // ← Move this up
             cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
-            
+
+            progressBarCooldown.Maximum = cooldownDuration;
+            progressBarCooldown.Step = cooldownTimer.Interval;
         }
+
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
         {
