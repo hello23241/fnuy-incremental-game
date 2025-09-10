@@ -18,7 +18,8 @@
             InitializeComponent();
 
             cooldownTimer = new System.Windows.Forms.Timer(); // ← Move this up
-            cooldownTimer.Interval = 50;
+            cooldownTimer.Interval = 20; // instead of 50
+            progressBarCooldown.Step = cooldownTimer.Interval;
             cooldownTimer.Tick += CooldownTimer_Tick;
 
             progressBarCooldown.Maximum = cooldownDuration;
@@ -33,6 +34,7 @@
 
             if (cooldownElapsed >= cooldownDuration)
             {
+                progressBarCooldown.Value = progressBarCooldown.Maximum; // Force full bar
                 cooldownTimer.Stop();
                 isCooldown = false;
                 button1.Enabled = true;
