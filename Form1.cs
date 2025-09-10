@@ -22,23 +22,19 @@
             cooldownTimer.Tick += CooldownTimer_Tick;
 
             // Set progress bar maximum slightly above cooldownDuration
-            progressBarCooldown.Maximum = cooldownDuration + cooldownTimer.Interval;
-            progressBarCooldown.Step = cooldownTimer.Interval;
         }
 
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
         {
             cooldownElapsed += cooldownTimer.Interval;
-            progressBarCooldown.Value = Math.Min(progressBarCooldown.Maximum, cooldownElapsed);
 
             if (cooldownElapsed >= cooldownDuration)
             {
-                progressBarCooldown.Value = progressBarCooldown.Maximum; // Force full bar
                 cooldownTimer.Stop();
                 isCooldown = false;
                 button1.Enabled = true;
-                progressBarCooldown.Value = 0;
+                cooldownElapsed = 0;
             }
         }
 
