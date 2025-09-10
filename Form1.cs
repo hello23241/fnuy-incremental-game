@@ -7,7 +7,7 @@ namespace WinFormsApp1
         private double upgradeCost = 5.0;
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
-        private Timer cooldownTimer;
+        private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
@@ -20,7 +20,7 @@ namespace WinFormsApp1
             labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
             button1.Text = $"+{(int)pointMultiplier} points";
             UpdateUpgradeInfoLabel();
-            cooldownTimer = new Timer();
+            cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50; // update every 50ms
             cooldownTimer.Tick += CooldownTimer_Tick;
         }
