@@ -7,6 +7,11 @@ namespace WinFormsApp1
         private double upgradeCost = 5.0;
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
+        private Timer cooldownTimer;
+        private int cooldownDuration = 1000; // milliseconds
+        private int cooldownElapsed = 0;
+        private bool isCooldown = false;
+
 
         public Form1()
         {
@@ -15,14 +20,40 @@ namespace WinFormsApp1
             labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
             button1.Text = $"+{(int)pointMultiplier} points";
             UpdateUpgradeInfoLabel();
+            cooldownTimer = new Timer();
+            cooldownTimer.Interval = 50; // update every 50ms
+            cooldownTimer.Tick += CooldownTimer_Tick;
+        }
+        private void CooldownTimer_Tick(object sender, EventArgs e)
+        {
+            cooldownElapsed += cooldownTimer.Interval;
+            progressBarCooldown.Value = Math.Min(progressBarCooldown.Maximum, cooldownElapsed);
+
+            if (cooldownElapsed >= cooldownDuration)
+            {
+                cooldownTimer.Stop();
+                isCooldown = false;
+                button1.Enabled = true;
+                progressBarCooldown.Value = 0;
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
+            if (isCooldown) return;
+
             point += (int)pointMultiplier;
             labelPoint.Text = point.ToString();
             button1.Text = $"+{(int)pointMultiplier} points";
+
+            // Start cooldown
+            isCooldown = true;
+            button1.Enabled = false;
+            cooldownElapsed = 0;
+            progressBarCooldown.Value = 0;
+            cooldownTimer.Start();
         }
+
 
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {

@@ -47,6 +47,11 @@
             // 
             this.button1.Location = new System.Drawing.Point(30, 30);
             this.button1.Name = "button1";
+            this.progressBarCooldown = new System.Windows.Forms.ProgressBar();
+            this.progressBarCooldown.Location = new System.Drawing.Point(30, 70); // just below button1
+            this.progressBarCooldown.Size = new System.Drawing.Size(100, 10);
+            this.progressBarCooldown.Maximum = cooldownDuration;
+            this.Controls.Add(this.progressBarCooldown);
             this.button1.Size = new System.Drawing.Size(100, 30);
             this.button1.Text = "Click Me";
             this.button1.UseVisualStyleBackColor = true;
@@ -134,5 +139,7 @@
         private System.Windows.Forms.Label labelPrestigeCost;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Button buttonDebug;
+        private System.Windows.Forms.ProgressBar progressBarCooldown;
+
     }
 }
