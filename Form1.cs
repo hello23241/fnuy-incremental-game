@@ -10,13 +10,13 @@ namespace WinFormsApp1
         private BigDouble prestigeBonus = new BigDouble(0.0);
         private BigDouble prestigeCost = new BigDouble(1000.0);
         private BigDouble generatorCost = new BigDouble(100.0);
+        private BigDouble ascendCost = new BigDouble(1000000.0);
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
-        private BigDouble ascendCost = new BigDouble(1000000.0);
         private int ascensionPoints = 0;
         private const double PrestigeIncrement = 0.02;
         public Form1()
@@ -135,8 +135,10 @@ namespace WinFormsApp1
         }
         private void UpdateGeneratorInfo()
         {
-            BigDouble pps = Math.Pow(10,generatorCount) * 0.1 * pointMultiplier;
-            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {generatorCost:F0} | PPS: {pps:F1}";
+            if (generatorCount == 0)
+            { return; }
+            BigDouble pps = Math.Pow(10,generatorCount) * 0.01 * pointMultiplier;
+            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {generatorCost:F0} | Point/second: {pps:F1}";
         }
 
         private void buttonGenerator_Click(object sender, EventArgs e)
@@ -154,7 +156,7 @@ namespace WinFormsApp1
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
             BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier;
-            point += (BigDouble)passiveGain;
+            point += passiveGain;
             labelPoint.Text = point.ToString("F1");
             UpdateButtonStates();
         }
