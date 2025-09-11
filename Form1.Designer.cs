@@ -36,7 +36,6 @@
             labelPrestigeCost = new Label();
             labelUpgradeInfo = new Label();
             buttonDebug = new Button();
-            progressBarCooldown = new ProgressBar();
             SuspendLayout();
             // 
             // button1
@@ -116,19 +115,11 @@
             buttonDebug.UseVisualStyleBackColor = true;
             buttonDebug.Click += buttonDebug_Click;
             // 
-            // progressBarCooldown
-            // 
-            progressBarCooldown.Location = new Point(30, 70);
-            progressBarCooldown.Name = "progressBarCooldown";
-            progressBarCooldown.Size = new Size(100, 30);
-            progressBarCooldown.TabIndex = 0;
-            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(progressBarCooldown);
             Controls.Add(button1);
             Controls.Add(labelPoint);
             Controls.Add(buttonUpgrade);
@@ -152,7 +143,5 @@
         private System.Windows.Forms.Label labelPrestigeCost;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Button buttonDebug;
-        private System.Windows.Forms.ProgressBar progressBarCooldown;
-
     }
 }

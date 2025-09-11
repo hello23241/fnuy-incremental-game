@@ -8,7 +8,7 @@
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
         private System.Windows.Forms.Timer cooldownTimer;
-        private int cooldownDuration = 1500; // milliseconds
+        private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
 
@@ -50,7 +50,6 @@
             isCooldown = true;
             button1.Enabled = false;
             cooldownElapsed = 0;
-            progressBarCooldown.Value = 0;
             cooldownTimer.Start();
         }
 
