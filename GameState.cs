@@ -12,7 +12,7 @@ namespace WinFormsApp1
         public BigDouble PrestigeBonus;
         public BigDouble PrestigeCost;
         public BigDouble GeneratorCost;
-        public BigDouble GeneratorCount;
+        public int GeneratorCount;
         public BigDouble AscendCost;
         public BigDouble AscensionPoints;
         public DateTime LastSavedTime;

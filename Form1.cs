@@ -13,14 +13,15 @@ namespace WinFormsApp1
         private BigDouble prestigeCost = new BigDouble(1000.0);
         private BigDouble generatorCost = new BigDouble(100.0);
         private BigDouble ascendCost = new BigDouble(1000000.0);
+        private BigDouble ascensionPoints = 0;
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
-        private int ascensionPoints = 0;
         private const double PrestigeIncrement = 0.02;
+        //constructor
         public Form1()
         {
             InitializeComponent();
@@ -34,6 +35,7 @@ namespace WinFormsApp1
             generatorTimer.Tick += GeneratorTimer_Tick;
             generatorTimer.Start();
             // Hiding buttons at the start
+
             buttonAscend.Visible = false;
             labelAscendCost.Visible = false;
             buttonOpenAscensionShop.Visible = false;
