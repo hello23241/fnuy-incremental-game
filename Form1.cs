@@ -115,7 +115,7 @@
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
             AscensionShop shop = new AscensionShop(ascensionPoints);
-            shop.Show();
+            shop.Show(); // Or use ShowDialog() if you want it modal
         }
 
         private void UpdateUpgradeInfoLabel()

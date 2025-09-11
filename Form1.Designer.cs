@@ -174,7 +174,6 @@
         private System.Windows.Forms.Button buttonAscend;
         private System.Windows.Forms.Label labelAscendCost;
         private System.Windows.Forms.Button buttonOpenAscensionShop;
-        private System.Windows.Forms.Button buttonAscend;
 
 
     }
