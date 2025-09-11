@@ -47,6 +47,12 @@ namespace WinFormsApp1
             // This is necessary
             UpdateButtonStates();
         }
+        private void UpdateUI()
+        {
+            UpdateButtonStates();
+            UpdateUpgradeInfoLabel();
+            UpdateGeneratorInfo();
+        }
         private void UpdateButtonStates()
         {
             // Check if player has enough points for each action
@@ -82,7 +88,7 @@ namespace WinFormsApp1
             point += (BigDouble)pointMultiplier;
             labelPoint.Text = point.ToString("F1");
             button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
-            UpdateButtonStates();
+            UpdateUI();
 
             // Start cooldown
             isCooldown = true;
@@ -102,8 +108,7 @@ namespace WinFormsApp1
                 labelPoint.Text = point.ToString("F1");
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost.ToString("F1")}";
                 button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
-                UpdateButtonStates();
-                UpdateGeneratorInfo();
+                UpdateUI();
 
                 UpdateUpgradeInfoLabel();
                 if (cooldownDuration == 1000)
@@ -136,9 +141,7 @@ namespace WinFormsApp1
                 labelPrestigeInfo.Visible = true;
                 labelGeneratorInfo.Visible = true;
                 buttonGenerator.Visible = true;
-                UpdateUpgradeInfoLabel();
-                UpdateButtonStates();
-                UpdateGeneratorInfo();
+                UpdateUI();
             }
         }
         private void UpdateGeneratorInfo()
@@ -157,8 +160,7 @@ namespace WinFormsApp1
                 generatorCount++;
                 generatorCost = BigDouble.Pow(generatorCost, 2);
                 labelPoint.Text = point.ToString("E3"); // e.g., "1.23E+12"
-                UpdateButtonStates();
-                UpdateGeneratorInfo();
+                UpdateUI();
             }
         }
         private void GeneratorTimer_Tick(object sender, EventArgs e)
@@ -166,7 +168,7 @@ namespace WinFormsApp1
             BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier;
             point += passiveGain;
             labelPoint.Text = point.ToString("F1");
-            UpdateButtonStates();
+            UpdateUI();
         }
         private void buttonAscend_Click(object sender, EventArgs e)
         {
@@ -186,9 +188,7 @@ namespace WinFormsApp1
                 labelAscendCost.Text = $"Ascend Cost: {ascendCost:F1}";
                 labelPoint.Text = $"Points: {point:F1}";
                 buttonOpenAscensionShop.Visible = true;
-                UpdateUpgradeInfoLabel();
-                UpdateButtonStates();
-                UpdateGeneratorInfo();
+                UpdateUI();
             }
         }
         //offline progress
