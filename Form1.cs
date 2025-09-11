@@ -76,7 +76,9 @@
                     cooldownDuration = 500;
                     buttonPrestige.Visible = true;
                     labelPrestigeCost.Visible = true;
-                    labelPrestigeInfo.Visible = true;
+                    labelUpgradeNote.Visible = false;
+                    labelPrestigeInfo.Text = $"increases the factor of upgrade by {PrestigeIncrement}";
+
                 }
             }
         }
@@ -96,6 +98,7 @@
                 button1.Text = $"+{(int)pointMultiplier} points";
                 buttonAscend.Visible = true;
                 labelAscendCost.Visible = true;
+                labelPrestigeInfo.Visible = true;
                 UpdateUpgradeInfoLabel();
             }
         }

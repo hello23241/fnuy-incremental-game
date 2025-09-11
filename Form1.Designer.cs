@@ -105,7 +105,7 @@ buttonDebug = new Button();
             labelPrestigeInfo.Name = "labelPrestigeInfo";
             labelPrestigeInfo.Size = new Size(300, 30);
             labelPrestigeInfo.TabIndex = 13;
-            labelPrestigeInfo.Text = $"increases the factor of upgrade by {PrestigeIncrement}";
+            labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
             labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // labelUpgradeInfo
@@ -129,7 +129,6 @@ buttonDebug = new Button();
             // buttonDebug
             // 
 #if DEBUG
-// buttonDebug
 buttonDebug = new Button();
 buttonDebug.Location = new Point(670, 390);
 buttonDebug.Name = "buttonDebug";
