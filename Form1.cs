@@ -13,7 +13,7 @@
         private bool isCooldown = false;
         private double ascendCost = 1000000.0;
         private int ascensionPoints = 0;
-
+        private const double PrestigeIncrement = 0.02;
         public Form1()
         {
             InitializeComponent();
@@ -26,7 +26,12 @@
             buttonOpenAscensionShop.Visible = false;
             buttonPrestige.Visible = false;
             labelPrestigeCost.Visible = false;
-
+            labelPrestigeInfo.Visible = false;
+#if DEBUG
+            buttonDebug.Visible = true;
+#else
+            buttonDebug.Visible = false;
+#endif
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
@@ -68,9 +73,16 @@
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 button1.Text = $"+{(int)pointMultiplier} points";
-                buttonPrestige.Visible = true;
-                labelPrestigeCost.Visible = true;
+
+
                 UpdateUpgradeInfoLabel();
+                if (cooldownDuration == 1000)
+                {
+                    cooldownDuration = 500;
+                    buttonPrestige.Visible = true;
+                    labelPrestigeCost.Visible = true;
+                    labelPrestigeInfo.Visible = true;
+                }
             }
         }
 
@@ -79,7 +91,7 @@
             if (point >= (int)prestigeCost)
             {
                 point = 0;
-                prestigeBonus += 0.02;
+                prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCost = 5.0;
                 prestigeCost = Math.Pow(prestigeCost, 1.05);
@@ -114,12 +126,15 @@
             }
         }
 
+#if DEBUG
         private void buttonDebug_Click(object sender, EventArgs e)
         {
             pointMultiplier *= 10;
             button1.Text = $"+{(int)pointMultiplier} points";
             UpdateUpgradeInfoLabel();
         }
+#endif
+
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
             // Pass current ascension points to the shop

@@ -97,6 +97,14 @@
             labelPrestigeCost.TabIndex = 7;
             labelPrestigeCost.Text = "Prestige Cost: 1000";
             labelPrestigeCost.TextAlign = ContentAlignment.MiddleLeft;
+            //Prestige info
+            labelPrestigeInfo = new Label();
+            labelPrestigeInfo.Location = new Point(262, 146); // Adjust position as needed
+            labelPrestigeInfo.Name = "labelPrestigeInfo";
+            labelPrestigeInfo.Size = new Size(300, 30);
+            labelPrestigeInfo.TabIndex = 13;
+            labelPrestigeInfo.Text = $"increases the factor of upgrade by {PrestigeIncrement}";
+            labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // labelUpgradeInfo
             // 
@@ -104,9 +112,17 @@
             labelUpgradeInfo.Name = "labelUpgradeInfo";
             labelUpgradeInfo.Size = new Size(300, 30);
             labelUpgradeInfo.TabIndex = 5;
-            labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.01])";
+            labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.02])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
             labelUpgradeInfo.Click += labelUpgradeInfo_Click;
+            //LabelUpgradeNot (for the one time upgrade)
+            labelUpgradeNote = new Label();
+            labelUpgradeNote.Location = new Point(570, 110); // Adjust X as needed for spacing
+            labelUpgradeNote.Name = "labelUpgradeNote";
+            labelUpgradeNote.Size = new Size(200, 30);
+            labelUpgradeNote.TabIndex = 12;
+            labelUpgradeNote.Text = "Half the cooldown on first purchase";
+            labelUpgradeNote.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // buttonDebug
             // 
@@ -157,8 +173,10 @@
             Controls.Add(buttonUpgrade);
             Controls.Add(labelUpgradeCost);
             Controls.Add(labelUpgradeInfo);
+            Controls.Add(labelUpgradeNote);
             Controls.Add(buttonPrestige);
             Controls.Add(labelPrestigeCost);
+            Controls.Add(labelPrestigeInfo);
             Controls.Add(buttonAscend);
             Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
@@ -176,7 +194,9 @@
         private System.Windows.Forms.Label labelUpgradeCost;
         private System.Windows.Forms.Button buttonPrestige;
         private System.Windows.Forms.Label labelPrestigeCost;
+        private System.Windows.Forms.Label labelPrestigeInfo;
         private System.Windows.Forms.Label labelUpgradeInfo;
+        private System.Windows.Forms.Label labelUpgradeNote;
         private System.Windows.Forms.Button buttonDebug;
         private System.Windows.Forms.Button buttonAscend;
         private System.Windows.Forms.Label labelAscendCost;
