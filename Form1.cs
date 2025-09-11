@@ -6,7 +6,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(100000);
+        private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1.0);
         private BigDouble upgradeCost = new BigDouble(10.0);
         private BigDouble prestigeBonus = new BigDouble(0.0);
@@ -44,6 +44,7 @@ namespace WinFormsApp1
             labelPrestigeInfo.Visible = false;
             labelGeneratorInfo.Visible = false;
             buttonGenerator.Visible = false;
+            labelSoftCap.Visible = false;
             // This is necessary
             UpdateUI();
         }
@@ -96,8 +97,8 @@ namespace WinFormsApp1
             BigDouble gain = pointMultiplier / divisor;
             point += gain;
 
-            labelPoint.Text = point.ToString("F1");
-            button1.Text = $"+{gain.ToString("F1")} points";
+            labelPoint.Text = FormatNumbers(point);
+            button1.Text = $"+{FormatNumbers(gain)} points";
 
             UpdateUI();
 
@@ -116,9 +117,9 @@ namespace WinFormsApp1
                 point -= (BigDouble)upgradeCost;
                 pointMultiplier = 1 + pointMultiplier * (1.01 + prestigeBonus);
                 upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
-                labelPoint.Text = point.ToString("F1");
-                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost.ToString("F1")}";
-                button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
+                labelPoint.Text = FormatNumbers(point);
+                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
+                button1.Text = $"+{FormatNumbers(pointMultiplier)} points";
                 UpdateUI();
 
                 UpdateUpgradeInfoLabel();
@@ -143,15 +144,16 @@ namespace WinFormsApp1
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCost = 5.0;
                 prestigeCost = BigDouble.Pow(prestigeCost, 1.05);
-                labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F1}";
+                labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
                 labelPoint.Text = point.ToString("F1");
-                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F1}";
+                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
                 button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
                 buttonAscend.Visible = true;
                 labelAscendCost.Visible = true;
                 labelPrestigeInfo.Visible = true;
                 labelGeneratorInfo.Visible = true;
                 buttonGenerator.Visible = true;
+                labelSoftCap.Visible = true;
                 UpdateUI();
             }
         }
@@ -160,7 +162,7 @@ namespace WinFormsApp1
             if (generatorCount == 0)
             { return; }
             BigDouble pps = Math.Pow(10,generatorCount) * 0.01 * pointMultiplier;
-            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {generatorCost:F0} | Point/second: {pps:F1}";
+            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Point/second: {FormatNumbers(pps)}";
         }
 
         private void buttonGenerator_Click(object sender, EventArgs e)
@@ -176,12 +178,17 @@ namespace WinFormsApp1
         }
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier / divisor;
-            point += passiveGain;
+            if (generatorCount > 0)
+            {
+                BigDouble divisor = GetSoftCapDivisor(point);
 
-            labelPoint.Text = point.ToString("F1");
-            UpdateUI();
+                BigDouble passiveGain = BigDouble.Pow(10, generatorCount) * 0.1 * pointMultiplier / divisor;
+
+                point += passiveGain;
+
+                labelPoint.Text = point.ToString("F1");
+                UpdateUI();
+            }
         }
         private void buttonAscend_Click(object sender, EventArgs e)
         {
@@ -196,10 +203,10 @@ namespace WinFormsApp1
                 ascensionPoints += 1;
 
                 labelPoint.Text = point.ToString("F1");
-                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F1}";
-                labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F1}";
-                labelAscendCost.Text = $"Ascend Cost: {ascendCost:F1}";
-                labelPoint.Text = $"Points: {point:F1}";
+                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
+                labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
+                labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
+                labelPoint.Text = $"Points: {FormatNumbers(point)}";
                 buttonOpenAscensionShop.Visible = true;
                 UpdateUI();
             }
@@ -248,17 +255,51 @@ namespace WinFormsApp1
         //soft cap
         private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
         {
-            if (currentPoints < 1000) return 1;
-            if (currentPoints < 10000) return 1 + (currentPoints - 1000) / 9000; // scales from 1 to 2
-            if (currentPoints < 100000) return 2 + (currentPoints - 10000) / 90000 * 2; // scales from 2 to 4
-            if (currentPoints < 1000000) return 4 + (currentPoints - 100000) / 900000 * 4; // scales from 4 to 8
-            return 8;
+            if (point>10000)
+            {
+                BigDouble baseSoftCap = 2; // starting soft cap value
+                int oom = (int)Math.Floor(BigDouble.Log10(point))-4; // get order of magnitude
+                BigDouble softCap = baseSoftCap * BigDouble.Pow(2, oom);
+                return softCap;
+            }
+            return 1;
         }
         private void UpdateSoftCapLabel()
         {
             BigDouble divisor = GetSoftCapDivisor(point);
-            labelSoftCap.Text = $"Soft Cap: ÷{divisor:F2}";
+            labelSoftCap.Text = $"Soft Cap: {FormatNumbers(divisor)}";
         }
+        private string FormatNumbers(BigDouble value)
+        {
+            // Use scientific notation only for extremely large values (>= 1e308)
+            if (value >= BigDouble.Pow(10, 308))
+                return value.ToString("E1");
+
+            // Custom suffixes for readable formatting
+            string[] suffixes = {
+    "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", // 10^3 to 10^33
+    "Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg", // 10^36 to 10^63
+    "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg", // 10^66 to 10^93
+    "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag", // 10^96 to 10^123
+    "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig", // 10^126 to 10^153
+    "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqig", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg", // 10^156 to 10^183
+    "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg", // 10^186 to 10^213
+    "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg", // 10^216 to 10^243
+    "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog", // 10^246 to 10^273
+    "Unog", "Dnog", "Tnog", "Qanog", "Qinog", "Sxnog", "Spnog", "Ocnog", "Nonog", "C" // 10^276 to 10^303
+};
+
+            int suffixIndex = 0;
+
+            while (value >= 1000 && suffixIndex < suffixes.Length - 1)
+            {
+                value /= 1000;
+                suffixIndex++;
+            }
+
+            return $"{value:F1}{suffixes[suffixIndex]}";
+        }
+
 
         private void ApplyOfflineProgress(DateTime lastSaved)
         {
@@ -298,7 +339,7 @@ namespace WinFormsApp1
         private void UpdateUpgradeInfoLabel()
         {
             BigDouble multiplier = 1.01 + prestigeBonus;
-            labelUpgradeInfo.Text = $"improve click gain by 1 + x*({multiplier:F2})";
+            labelUpgradeInfo.Text = $"improve click gain by 1 + x*({FormatNumbers(multiplier)})";
         }
 
         private void labelUpgradeInfo_Click(object sender, EventArgs e)

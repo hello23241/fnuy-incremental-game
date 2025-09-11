@@ -182,7 +182,7 @@
             // 
             labelSoftCap.Location = new Point(30, 7);
             labelSoftCap.Name = "labelSoftCap";
-            labelSoftCap.Size = new Size(77, 20);
+            labelSoftCap.Size = new Size(167, 20);
             labelSoftCap.TabIndex = 0;
             labelSoftCap.Text = "Soft Cap: x1";
             // 
