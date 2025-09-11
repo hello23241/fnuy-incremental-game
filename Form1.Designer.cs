@@ -157,6 +157,16 @@
             buttonGenerator.Text = "Buy Generator";
             buttonGenerator.UseVisualStyleBackColor = true;
             buttonGenerator.Click += buttonGenerator_Click;
+            // labelGeneratorInfo
+            labelGeneratorInfo = new Label();
+            labelGeneratorInfo.Location = new Point(360, 30); // Right of the generator button
+            labelGeneratorInfo.Name = "labelGeneratorInfo";
+            labelGeneratorInfo.Size = new Size(200, 30);
+            labelGeneratorInfo.TabIndex = 15;
+            labelGeneratorInfo.Text = "Generators: 0 | Cost: 100 | Points/s: 0";
+            labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
+            Controls.Add(labelGeneratorInfo);
+
             // 
             // labelUpgradeNote
             // 
@@ -200,7 +210,7 @@
         private System.Windows.Forms.Label labelPrestigeCost;
         private System.Windows.Forms.Label labelPrestigeInfo;
         private System.Windows.Forms.Button buttonGenerator;
-        private System.Windows.Forms.Label labelGeneratorCost;
+        private System.Windows.Forms.Label labelGeneratorInfo;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Label labelUpgradeNote;
         private System.Windows.Forms.Button buttonAscend;

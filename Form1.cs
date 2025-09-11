@@ -1,20 +1,22 @@
-﻿namespace WinFormsApp1
+﻿using BreakInfinity;
+
+namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private int point = 1000;
-        private double pointMultiplier = 1.0;
-        private double upgradeCost = 10.0;
-        private double prestigeBonus = 0.0;
-        private double prestigeCost = 1000.0;
-        private double generatorCost = 100.0;
+        private BigDouble point = 10000000;
+        private BigDouble pointMultiplier = 1.0;
+        private BigDouble upgradeCost = 10.0;
+        private BigDouble prestigeBonus = 0.0;
+        private BigDouble prestigeCost = 1000.0;
+        private BigDouble generatorCost = 100.0;
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
-        private double ascendCost = 1000000.0;
+        private BigDouble ascendCost = 1000000.0;
         private int ascensionPoints = 0;
         private const double PrestigeIncrement = 0.02;
         public Form1()
@@ -42,10 +44,10 @@
         private void UpdateButtonStates()
         {
             // Check if player has enough points for each action
-            buttonUpgrade.Enabled = point >= (int)upgradeCost;
-            buttonPrestige.Enabled = point >= (int)prestigeCost;
-            buttonAscend.Enabled = point >= (int)ascendCost;
-            buttonGenerator.Enabled = point >= (int)generatorCost;
+            buttonUpgrade.Enabled = point >= (BigDouble)upgradeCost;
+            buttonPrestige.Enabled = point >= (BigDouble)prestigeCost;
+            buttonAscend.Enabled = point >= (BigDouble)ascendCost;
+            buttonGenerator.Enabled = point >= (BigDouble)generatorCost;
 
             //Change button colors for visual feedback
             buttonUpgrade.BackColor = buttonUpgrade.Enabled ? Color.LightGreen : Color.Gray;
@@ -71,9 +73,9 @@
         {
             if (isCooldown) return;
 
-            point += (int)pointMultiplier;
+            point += (BigDouble)pointMultiplier;
             labelPoint.Text = point.ToString();
-            button1.Text = $"+{(int)pointMultiplier} points";
+            button1.Text = $"+{(BigDouble)pointMultiplier} points";
             UpdateButtonStates();
 
             // Start cooldown
@@ -86,15 +88,16 @@
 
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {
-            if (point >= (int)upgradeCost)
+            if (point >= (BigDouble)upgradeCost)
             {
-                point -= (int)upgradeCost;
+                point -= (BigDouble)upgradeCost;
                 pointMultiplier = 1 + pointMultiplier * (1.01 + prestigeBonus);
                 upgradeCost = Math.Pow(upgradeCost, 1.05);
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
-                button1.Text = $"+{(int)pointMultiplier} points";
+                button1.Text = $"+{(BigDouble)pointMultiplier} points";
                 UpdateButtonStates();
+                UpdateGeneratorInfo();
 
                 UpdateUpgradeInfoLabel();
                 if (cooldownDuration == 1000)
@@ -111,7 +114,7 @@
 
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
-            if (point >= (int)prestigeCost)
+            if (point >= (BigDouble)prestigeCost)
             {
                 point = 0;
                 prestigeBonus += PrestigeIncrement;
@@ -121,28 +124,36 @@
                 labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
-                button1.Text = $"+{(int)pointMultiplier} points";
+                button1.Text = $"+{(BigDouble)pointMultiplier} points";
                 buttonAscend.Visible = true;
                 labelAscendCost.Visible = true;
                 labelPrestigeInfo.Visible = true;
                 UpdateUpgradeInfoLabel();
                 UpdateButtonStates();
+                UpdateGeneratorInfo();
             }
         }
-            private void buttonGenerator_Click(object sender, EventArgs e)
+        private void UpdateGeneratorInfo()
         {
-            if (point >= (int)generatorCost)
+            BigDouble pps = Math.Pow(10,generatorCount) * 0.1 * pointMultiplier;
+            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {generatorCost:F0} | PPS: {pps:F1}";
+        }
+
+        private void buttonGenerator_Click(object sender, EventArgs e)
+        {
+            if (point >= (BigDouble)generatorCost)
             {
-                point -= (int)generatorCost;
+                point -= (BigDouble)generatorCost;
                 generatorCount++;
                 generatorCost = Math.Pow(generatorCost, 2);
-                labelPoint.Text = point.ToString();
+                labelPoint.Text = point.ToString("E3"); // e.g., "1.23E+12"
                 UpdateButtonStates();
+                UpdateGeneratorInfo();
             }
         }
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
-            double passiveGain = generatorCount * 0.1 * pointMultiplier;
+            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier;
             point += (int)passiveGain;
             labelPoint.Text = point.ToString();
             UpdateButtonStates();
@@ -163,10 +174,11 @@
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
                 labelAscendCost.Text = $"Ascend Cost: {ascendCost:F0}";
-                button1.Text = $"+{(int)pointMultiplier} points";
+                button1.Text = $"+{(BigDouble)pointMultiplier} points";
                 buttonOpenAscensionShop.Visible = true;
                 UpdateUpgradeInfoLabel();
                 UpdateButtonStates();
+                UpdateGeneratorInfo();
             }
         }
 
@@ -188,7 +200,7 @@
 
         private void UpdateUpgradeInfoLabel()
         {
-            double multiplier = 1.01 + prestigeBonus;
+            BigDouble multiplier = 1.01 + prestigeBonus;
             labelUpgradeInfo.Text = $"improve click gain by 1 + x*({multiplier:F2})";
         }
 
