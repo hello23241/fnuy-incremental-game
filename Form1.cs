@@ -38,6 +38,8 @@ namespace WinFormsApp1
             buttonPrestige.Visible = false;
             labelPrestigeCost.Visible = false;
             labelPrestigeInfo.Visible = false;
+            labelGeneratorInfo.Visible = false;
+            buttonGenerator.Visible = false;
             // This is necessary
             UpdateButtonStates();
         }
@@ -128,6 +130,8 @@ namespace WinFormsApp1
                 buttonAscend.Visible = true;
                 labelAscendCost.Visible = true;
                 labelPrestigeInfo.Visible = true;
+                labelGeneratorInfo.Visible = true;
+                buttonGenerator.Visible = true;
                 UpdateUpgradeInfoLabel();
                 UpdateButtonStates();
                 UpdateGeneratorInfo();

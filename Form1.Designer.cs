@@ -41,6 +41,7 @@
             labelPrestigeInfo = new Label();
             buttonGenerator = new Button();
             labelUpgradeNote = new Label();
+            labelGeneratorInfo = new Label();
             SuspendLayout();
             // 
             // button1
@@ -104,7 +105,7 @@
             // 
             labelUpgradeInfo.Location = new Point(262, 110);
             labelUpgradeInfo.Name = "labelUpgradeInfo";
-            labelUpgradeInfo.Size = new Size(300, 30);
+            labelUpgradeInfo.Size = new Size(272, 30);
             labelUpgradeInfo.TabIndex = 5;
             labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.02])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
@@ -124,7 +125,7 @@
             // 
             labelAscendCost.Location = new Point(136, 182);
             labelAscendCost.Name = "labelAscendCost";
-            labelAscendCost.Size = new Size(144, 30);
+            labelAscendCost.Size = new Size(142, 30);
             labelAscendCost.TabIndex = 10;
             labelAscendCost.Text = "Ascend Cost: 1000000";
             labelAscendCost.TextAlign = ContentAlignment.MiddleLeft;
@@ -143,7 +144,7 @@
             // 
             labelPrestigeInfo.Location = new Point(262, 146);
             labelPrestigeInfo.Name = "labelPrestigeInfo";
-            labelPrestigeInfo.Size = new Size(300, 30);
+            labelPrestigeInfo.Size = new Size(221, 30);
             labelPrestigeInfo.TabIndex = 13;
             labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
             labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
@@ -157,31 +158,31 @@
             buttonGenerator.Text = "Buy Generator";
             buttonGenerator.UseVisualStyleBackColor = true;
             buttonGenerator.Click += buttonGenerator_Click;
-            // labelGeneratorInfo
-            labelGeneratorInfo = new Label();
-            labelGeneratorInfo.Location = new Point(360, 30); // Right of the generator button
-            labelGeneratorInfo.Name = "labelGeneratorInfo";
-            labelGeneratorInfo.Size = new Size(200, 30);
-            labelGeneratorInfo.TabIndex = 15;
-            labelGeneratorInfo.Text = "Generators: 0 | Cost: 100 | Points/s: 0";
-            labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
-            Controls.Add(labelGeneratorInfo);
-
             // 
             // labelUpgradeNote
             // 
-            labelUpgradeNote.Location = new Point(570, 110);
+            labelUpgradeNote.Location = new Point(540, 110);
             labelUpgradeNote.Name = "labelUpgradeNote";
             labelUpgradeNote.Size = new Size(200, 30);
             labelUpgradeNote.TabIndex = 12;
             labelUpgradeNote.Text = "Half the cooldown on first purchase";
             labelUpgradeNote.TextAlign = ContentAlignment.MiddleLeft;
             // 
+            // labelGeneratorInfo
+            // 
+            labelGeneratorInfo.Location = new Point(360, 30);
+            labelGeneratorInfo.Name = "labelGeneratorInfo";
+            labelGeneratorInfo.Size = new Size(200, 30);
+            labelGeneratorInfo.TabIndex = 15;
+            labelGeneratorInfo.Text = "Generators: 0 | Cost: 100 | Points/s: 0";
+            labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(labelGeneratorInfo);
             Controls.Add(buttonGenerator);
             Controls.Add(button1);
             Controls.Add(labelPoint);
