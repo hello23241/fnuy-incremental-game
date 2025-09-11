@@ -11,7 +11,8 @@
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
-
+        private double ascendCost = 1000000.0;
+        private int ascensionPoints = 0;
 
         public Form1()
         {
@@ -84,12 +85,38 @@
                 UpdateUpgradeInfoLabel();
             }
         }
+        private void buttonAscend_Click(object sender, EventArgs e)
+        {
+            if (point >= ascendCost)
+            {
+                point = 0;
+                pointMultiplier = 1.0;
+                upgradeCost = 5.0;
+                prestigeBonus = 0.0;
+                prestigeCost = 1000.0;
+                ascendCost = Math.Pow(ascendCost, 1.1); // Optional scaling
+                ascensionPoints += 1;
+
+                labelPoint.Text = point.ToString();
+                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
+                labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
+                labelAscendCost.Text = $"Ascend Cost: {ascendCost:F0}";
+                button1.Text = $"+{(int)pointMultiplier} points";
+
+                UpdateUpgradeInfoLabel();
+            }
+        }
 
         private void buttonDebug_Click(object sender, EventArgs e)
         {
             pointMultiplier *= 10;
             button1.Text = $"+{(int)pointMultiplier} points";
             UpdateUpgradeInfoLabel();
+        }
+        private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
+        {
+            AscensionShop shop = new AscensionShop(ascensionPoints);
+            shop.Show();
         }
 
         private void UpdateUpgradeInfoLabel()

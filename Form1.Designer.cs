@@ -104,6 +104,34 @@
             labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.01])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
             labelUpgradeInfo.Click += labelUpgradeInfo_Click;
+            // buttonAscend
+            buttonAscend = new Button();
+            buttonAscend.Location = new Point(30, 182); // Adjust position as needed
+            buttonAscend.Name = "buttonAscend";
+            buttonAscend.Size = new Size(100, 30);
+            buttonAscend.TabIndex = 9;
+            buttonAscend.Text = "Ascend";
+            buttonAscend.UseVisualStyleBackColor = true;
+            buttonAscend.Click += buttonAscend_Click;
+
+            // labelAscendCost
+            labelAscendCost = new Label();
+            labelAscendCost.Location = new Point(136, 182);
+            labelAscendCost.Name = "labelAscendCost";
+            labelAscendCost.Size = new Size(120, 30);
+            labelAscendCost.TabIndex = 10;
+            labelAscendCost.Text = "Ascend Cost: 1000000";
+            labelAscendCost.TextAlign = ContentAlignment.MiddleLeft;
+
+            // buttonOpenAscensionShop
+            buttonOpenAscensionShop = new Button();
+            buttonOpenAscensionShop.Location = new Point(30, 218);
+            buttonOpenAscensionShop.Name = "buttonOpenAscensionShop";
+            buttonOpenAscensionShop.Size = new Size(180, 30);
+            buttonOpenAscensionShop.TabIndex = 11;
+            buttonOpenAscensionShop.Text = "Open Ascension Shop";
+            buttonOpenAscensionShop.UseVisualStyleBackColor = true;
+            buttonOpenAscensionShop.Click += buttonOpenAscensionShop_Click;
             // 
             // buttonDebug
             // 
@@ -132,7 +160,7 @@
             Text = "Form1";
             ResumeLayout(false);
         }
-
+            
         #endregion
 
         private System.Windows.Forms.Button button1;
@@ -143,5 +171,9 @@
         private System.Windows.Forms.Label labelPrestigeCost;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Button buttonDebug;
+        private System.Windows.Forms.Button buttonAscend;
+        private System.Windows.Forms.Label labelAscendCost;
+        private System.Windows.Forms.Button buttonOpenAscensionShop;
+
     }
 }
