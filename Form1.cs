@@ -4,19 +4,19 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = 10000000;
-        private BigDouble pointMultiplier = 1.0;
-        private BigDouble upgradeCost = 10.0;
-        private BigDouble prestigeBonus = 0.0;
-        private BigDouble prestigeCost = 1000.0;
-        private BigDouble generatorCost = 100.0;
+        private BigDouble point = new BigDouble(100000);
+        private BigDouble pointMultiplier = new BigDouble(1.0);
+        private BigDouble upgradeCost = new BigDouble(10.0);
+        private BigDouble prestigeBonus = new BigDouble(0.0);
+        private BigDouble prestigeCost = new BigDouble(1000.0);
+        private BigDouble generatorCost = new BigDouble(100.0);
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
         private bool isCooldown = false;
-        private BigDouble ascendCost = 1000000.0;
+        private BigDouble ascendCost = new BigDouble(1000000.0);
         private int ascensionPoints = 0;
         private const double PrestigeIncrement = 0.02;
         public Form1()
@@ -92,7 +92,7 @@ namespace WinFormsApp1
             {
                 point -= (BigDouble)upgradeCost;
                 pointMultiplier = 1 + pointMultiplier * (1.01 + prestigeBonus);
-                upgradeCost = Math.Pow(upgradeCost, 1.05);
+                upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 button1.Text = $"+{(BigDouble)pointMultiplier} points";
@@ -120,7 +120,7 @@ namespace WinFormsApp1
                 prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCost = 5.0;
-                prestigeCost = Math.Pow(prestigeCost, 1.05);
+                prestigeCost = BigDouble.Pow(prestigeCost, 1.05);
                 labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
@@ -145,7 +145,7 @@ namespace WinFormsApp1
             {
                 point -= (BigDouble)generatorCost;
                 generatorCount++;
-                generatorCost = Math.Pow(generatorCost, 2);
+                generatorCost = BigDouble.Pow(generatorCost, 2);
                 labelPoint.Text = point.ToString("E3"); // e.g., "1.23E+12"
                 UpdateButtonStates();
                 UpdateGeneratorInfo();
@@ -154,7 +154,7 @@ namespace WinFormsApp1
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
             BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier;
-            point += (int)passiveGain;
+            point += (BigDouble)passiveGain;
             labelPoint.Text = point.ToString();
             UpdateButtonStates();
         }
@@ -167,14 +167,14 @@ namespace WinFormsApp1
                 upgradeCost = 5.0;
                 prestigeBonus = 0.0;
                 prestigeCost = 1000.0;
-                ascendCost = Math.Pow(ascendCost, 1.1); // Optional scaling
+                ascendCost = BigDouble.Pow(ascendCost, 1.1); // Optional scaling
                 ascensionPoints += 1;
 
                 labelPoint.Text = point.ToString();
-                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
-                labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
-                labelAscendCost.Text = $"Ascend Cost: {ascendCost:F0}";
-                button1.Text = $"+{(BigDouble)pointMultiplier} points";
+                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost.ToString("F1")}";
+                labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost.ToString("F1")}";
+                labelAscendCost.Text = $"Ascend Cost: {ascendCost.ToString("F1")}";
+                labelPoint.Text = $"Points: {point.ToString("F1")}";
                 buttonOpenAscensionShop.Visible = true;
                 UpdateUpgradeInfoLabel();
                 UpdateButtonStates();
