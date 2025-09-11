@@ -94,7 +94,7 @@ namespace WinFormsApp1
                 pointMultiplier = 1 + pointMultiplier * (1.01 + prestigeBonus);
                 upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
                 labelPoint.Text = point.ToString();
-                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
+                labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost.ToString("F1")}";
                 button1.Text = $"+{(BigDouble)pointMultiplier} points";
                 UpdateButtonStates();
                 UpdateGeneratorInfo();
