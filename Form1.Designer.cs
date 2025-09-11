@@ -36,6 +36,9 @@
             labelPrestigeCost = new Label();
             labelUpgradeInfo = new Label();
             buttonDebug = new Button();
+            buttonAscend = new Button();
+            labelAscendCost = new Label();
+            buttonOpenAscensionShop = new Button();
             SuspendLayout();
             // 
             // button1
@@ -73,7 +76,7 @@
             labelUpgradeCost.Name = "labelUpgradeCost";
             labelUpgradeCost.Size = new Size(120, 30);
             labelUpgradeCost.TabIndex = 4;
-            labelUpgradeCost.Text = "Upgrade Cost: 5";
+            labelUpgradeCost.Text = "Upgrade Cost: 10";
             labelUpgradeCost.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // buttonPrestige
@@ -104,33 +107,6 @@
             labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.01])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
             labelUpgradeInfo.Click += labelUpgradeInfo_Click;
-            // buttonAscend
-            buttonAscend = new Button();
-            buttonAscend.Location = new Point(30, 182); // Adjust as needed
-            buttonAscend.Name = "buttonAscend";
-            buttonAscend.Size = new Size(100, 30);
-            buttonAscend.TabIndex = 9;
-            buttonAscend.Text = "Ascend";
-            buttonAscend.UseVisualStyleBackColor = true;
-            buttonAscend.Click += buttonAscend_Click;
-            // labelAscendCost
-            labelAscendCost = new Label();
-            labelAscendCost.Location = new Point(136, 182);
-            labelAscendCost.Name = "labelAscendCost";
-            labelAscendCost.Size = new Size(120, 30);
-            labelAscendCost.TabIndex = 10;
-            labelAscendCost.Text = "Ascend Cost: 1000000";
-            labelAscendCost.TextAlign = ContentAlignment.MiddleLeft;
-
-            // buttonOpenAscensionShop
-            buttonOpenAscensionShop = new Button();
-            buttonOpenAscensionShop.Location = new Point(30, 218);
-            buttonOpenAscensionShop.Name = "buttonOpenAscensionShop";
-            buttonOpenAscensionShop.Size = new Size(180, 30);
-            buttonOpenAscensionShop.TabIndex = 11;
-            buttonOpenAscensionShop.Text = "Open Ascension Shop";
-            buttonOpenAscensionShop.UseVisualStyleBackColor = true;
-            buttonOpenAscensionShop.Click += buttonOpenAscensionShop_Click;
             // 
             // buttonDebug
             // 
@@ -141,6 +117,35 @@
             buttonDebug.Text = "Debug x10";
             buttonDebug.UseVisualStyleBackColor = true;
             buttonDebug.Click += buttonDebug_Click;
+            // 
+            // buttonAscend
+            // 
+            buttonAscend.Location = new Point(30, 182);
+            buttonAscend.Name = "buttonAscend";
+            buttonAscend.Size = new Size(100, 30);
+            buttonAscend.TabIndex = 9;
+            buttonAscend.Text = "Ascend";
+            buttonAscend.UseVisualStyleBackColor = true;
+            buttonAscend.Click += buttonAscend_Click;
+            // 
+            // labelAscendCost
+            // 
+            labelAscendCost.Location = new Point(136, 182);
+            labelAscendCost.Name = "labelAscendCost";
+            labelAscendCost.Size = new Size(144, 30);
+            labelAscendCost.TabIndex = 10;
+            labelAscendCost.Text = "Ascend Cost: 1000000";
+            labelAscendCost.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // buttonOpenAscensionShop
+            // 
+            buttonOpenAscensionShop.Location = new Point(30, 218);
+            buttonOpenAscensionShop.Name = "buttonOpenAscensionShop";
+            buttonOpenAscensionShop.Size = new Size(180, 30);
+            buttonOpenAscensionShop.TabIndex = 11;
+            buttonOpenAscensionShop.Text = "Open Ascension Shop";
+            buttonOpenAscensionShop.UseVisualStyleBackColor = true;
+            buttonOpenAscensionShop.Click += buttonOpenAscensionShop_Click;
             // 
             // Form1
             // 
@@ -155,13 +160,14 @@
             Controls.Add(buttonPrestige);
             Controls.Add(labelPrestigeCost);
             Controls.Add(buttonAscend);
-            Controls.Add(buttonDebug);
+            Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
+            Controls.Add(buttonDebug);
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
         }
-            
+
         #endregion
 
         private System.Windows.Forms.Button button1;

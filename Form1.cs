@@ -4,7 +4,7 @@
     {
         private int point = 0;
         private double pointMultiplier = 1.0;
-        private double upgradeCost = 5.0;
+        private double upgradeCost = 10.0;
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
         private System.Windows.Forms.Timer cooldownTimer;
@@ -21,8 +21,12 @@
             cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
+            buttonAscend.Visible = false;
+            labelAscendCost.Visible = false;
+            buttonOpenAscensionShop.Visible = false;
+            buttonPrestige.Visible = false;
+            labelPrestigeCost.Visible = false;
 
-            // Set progress bar maximum slightly above cooldownDuration
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
@@ -64,6 +68,8 @@
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 button1.Text = $"+{(int)pointMultiplier} points";
+                buttonPrestige.Visible = true;
+                labelPrestigeCost.Visible = true;
                 UpdateUpgradeInfoLabel();
             }
         }
@@ -81,6 +87,8 @@
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 button1.Text = $"+{(int)pointMultiplier} points";
+                buttonAscend.Visible = true;
+                labelAscendCost.Visible = true;
                 UpdateUpgradeInfoLabel();
             }
         }
@@ -101,7 +109,7 @@
                 labelPrestigeCost.Text = $"Prestige Cost: {prestigeCost:F0}";
                 labelAscendCost.Text = $"Ascend Cost: {ascendCost:F0}";
                 button1.Text = $"+{(int)pointMultiplier} points";
-
+                buttonOpenAscensionShop.Visible = true;
                 UpdateUpgradeInfoLabel();
             }
         }
