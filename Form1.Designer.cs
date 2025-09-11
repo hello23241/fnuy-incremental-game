@@ -106,14 +106,13 @@
             labelUpgradeInfo.Click += labelUpgradeInfo_Click;
             // buttonAscend
             buttonAscend = new Button();
-            buttonAscend.Location = new Point(30, 182); // Adjust position as needed
+            buttonAscend.Location = new Point(30, 182); // Adjust as needed
             buttonAscend.Name = "buttonAscend";
             buttonAscend.Size = new Size(100, 30);
             buttonAscend.TabIndex = 9;
             buttonAscend.Text = "Ascend";
             buttonAscend.UseVisualStyleBackColor = true;
             buttonAscend.Click += buttonAscend_Click;
-
             // labelAscendCost
             labelAscendCost = new Label();
             labelAscendCost.Location = new Point(136, 182);
@@ -155,6 +154,7 @@
             Controls.Add(labelUpgradeInfo);
             Controls.Add(buttonPrestige);
             Controls.Add(labelPrestigeCost);
+            Controls.Add(buttonAscend);
             Controls.Add(buttonDebug);
             Name = "Form1";
             Text = "Form1";
@@ -174,6 +174,8 @@
         private System.Windows.Forms.Button buttonAscend;
         private System.Windows.Forms.Label labelAscendCost;
         private System.Windows.Forms.Button buttonOpenAscensionShop;
+        private System.Windows.Forms.Button buttonAscend;
+
 
     }
 }

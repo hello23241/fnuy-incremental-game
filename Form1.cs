@@ -25,7 +25,6 @@
             // Set progress bar maximum slightly above cooldownDuration
         }
 
-
         private void CooldownTimer_Tick(object sender, EventArgs e)
         {
             cooldownElapsed += cooldownTimer.Interval;
