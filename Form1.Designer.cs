@@ -35,12 +35,12 @@
             buttonPrestige = new Button();
             labelPrestigeCost = new Label();
             labelUpgradeInfo = new Label();
-#if DEBUG
-buttonDebug = new Button();
-#endif
             buttonAscend = new Button();
             labelAscendCost = new Label();
             buttonOpenAscensionShop = new Button();
+            labelPrestigeInfo = new Label();
+            buttonGenerator = new Button();
+            labelUpgradeNote = new Label();
             SuspendLayout();
             // 
             // button1
@@ -99,14 +99,6 @@ buttonDebug = new Button();
             labelPrestigeCost.TabIndex = 7;
             labelPrestigeCost.Text = "Prestige Cost: 1000";
             labelPrestigeCost.TextAlign = ContentAlignment.MiddleLeft;
-            //Prestige info
-            labelPrestigeInfo = new Label();
-            labelPrestigeInfo.Location = new Point(262, 146); // Adjust position as needed
-            labelPrestigeInfo.Name = "labelPrestigeInfo";
-            labelPrestigeInfo.Size = new Size(300, 30);
-            labelPrestigeInfo.TabIndex = 13;
-            labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
-            labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // labelUpgradeInfo
             // 
@@ -117,29 +109,6 @@ buttonDebug = new Button();
             labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.02])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
             labelUpgradeInfo.Click += labelUpgradeInfo_Click;
-            //LabelUpgradeNot (for the one time upgrade)
-            labelUpgradeNote = new Label();
-            labelUpgradeNote.Location = new Point(570, 110); // Adjust X as needed for spacing
-            labelUpgradeNote.Name = "labelUpgradeNote";
-            labelUpgradeNote.Size = new Size(200, 30);
-            labelUpgradeNote.TabIndex = 12;
-            labelUpgradeNote.Text = "Half the cooldown on first purchase";
-            labelUpgradeNote.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // buttonDebug
-            // 
-#if DEBUG
-buttonDebug = new Button();
-buttonDebug.Location = new Point(670, 390);
-buttonDebug.Name = "buttonDebug";
-buttonDebug.Size = new Size(100, 40);
-buttonDebug.TabIndex = 8;
-buttonDebug.Text = "Debug x10";
-buttonDebug.UseVisualStyleBackColor = true;
-buttonDebug.Click += buttonDebug_Click;
-Controls.Add(buttonDebug);
-#endif
-
             // 
             // buttonAscend
             // 
@@ -170,11 +139,40 @@ Controls.Add(buttonDebug);
             buttonOpenAscensionShop.UseVisualStyleBackColor = true;
             buttonOpenAscensionShop.Click += buttonOpenAscensionShop_Click;
             // 
+            // labelPrestigeInfo
+            // 
+            labelPrestigeInfo.Location = new Point(262, 146);
+            labelPrestigeInfo.Name = "labelPrestigeInfo";
+            labelPrestigeInfo.Size = new Size(300, 30);
+            labelPrestigeInfo.TabIndex = 13;
+            labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
+            labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // buttonGenerator
+            // 
+            buttonGenerator.Location = new Point(230, 30);
+            buttonGenerator.Name = "buttonGenerator";
+            buttonGenerator.Size = new Size(120, 30);
+            buttonGenerator.TabIndex = 14;
+            buttonGenerator.Text = "Buy Generator";
+            buttonGenerator.UseVisualStyleBackColor = true;
+            buttonGenerator.Click += buttonGenerator_Click;
+            // 
+            // labelUpgradeNote
+            // 
+            labelUpgradeNote.Location = new Point(570, 110);
+            labelUpgradeNote.Name = "labelUpgradeNote";
+            labelUpgradeNote.Size = new Size(200, 30);
+            labelUpgradeNote.TabIndex = 12;
+            labelUpgradeNote.Text = "Half the cooldown on first purchase";
+            labelUpgradeNote.TextAlign = ContentAlignment.MiddleLeft;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(buttonGenerator);
             Controls.Add(button1);
             Controls.Add(labelPoint);
             Controls.Add(buttonUpgrade);
@@ -187,9 +185,6 @@ Controls.Add(buttonDebug);
             Controls.Add(buttonAscend);
             Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
-#if DEBUG
-Controls.Add(buttonDebug);
-#endif
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
@@ -204,6 +199,8 @@ Controls.Add(buttonDebug);
         private System.Windows.Forms.Button buttonPrestige;
         private System.Windows.Forms.Label labelPrestigeCost;
         private System.Windows.Forms.Label labelPrestigeInfo;
+        private System.Windows.Forms.Button buttonGenerator;
+        private System.Windows.Forms.Label labelGeneratorCost;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Label labelUpgradeNote;
         private System.Windows.Forms.Button buttonAscend;

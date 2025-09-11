@@ -2,11 +2,14 @@
 {
     public partial class Form1 : Form
     {
-        private int point = 0;
+        private int point = 1000;
         private double pointMultiplier = 1.0;
         private double upgradeCost = 10.0;
         private double prestigeBonus = 0.0;
         private double prestigeCost = 1000.0;
+        private double generatorCost = 100.0;
+        private int generatorCount = 0;
+        private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
@@ -17,16 +20,23 @@
         public Form1()
         {
             InitializeComponent();
-
+            //cooldown on "click me"
             cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50;
             cooldownTimer.Tick += CooldownTimer_Tick;
+            //timer for the point generator
+            generatorTimer = new System.Windows.Forms.Timer();
+            generatorTimer.Interval = 1000; // 1 second
+            generatorTimer.Tick += GeneratorTimer_Tick;
+            generatorTimer.Start();
+            // Hiding buttons at the start
             buttonAscend.Visible = false;
             labelAscendCost.Visible = false;
             buttonOpenAscensionShop.Visible = false;
             buttonPrestige.Visible = false;
             labelPrestigeCost.Visible = false;
             labelPrestigeInfo.Visible = false;
+            // This is necessary
             UpdateButtonStates();
         }
         private void UpdateButtonStates()
@@ -35,11 +45,13 @@
             buttonUpgrade.Enabled = point >= (int)upgradeCost;
             buttonPrestige.Enabled = point >= (int)prestigeCost;
             buttonAscend.Enabled = point >= (int)ascendCost;
+            buttonGenerator.Enabled = point >= (int)generatorCost;
 
-            // Optional: Change button colors for visual feedback
+            //Change button colors for visual feedback
             buttonUpgrade.BackColor = buttonUpgrade.Enabled ? Color.LightGreen : Color.Gray;
             buttonPrestige.BackColor = buttonPrestige.Enabled ? Color.LightBlue : Color.Gray;
             buttonAscend.BackColor = buttonAscend.Enabled ? Color.MediumPurple : Color.Gray;
+            buttonGenerator.BackColor = buttonGenerator.Enabled ? Color.LightGreen : Color.Gray;
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
@@ -116,6 +128,24 @@
                 UpdateUpgradeInfoLabel();
                 UpdateButtonStates();
             }
+        }
+            private void buttonGenerator_Click(object sender, EventArgs e)
+        {
+            if (point >= (int)generatorCost)
+            {
+                point -= (int)generatorCost;
+                generatorCount++;
+                generatorCost = Math.Pow(generatorCost, 2);
+                labelPoint.Text = point.ToString();
+                UpdateButtonStates();
+            }
+        }
+        private void GeneratorTimer_Tick(object sender, EventArgs e)
+        {
+            double passiveGain = generatorCount * 0.1 * pointMultiplier;
+            point += (int)passiveGain;
+            labelPoint.Text = point.ToString();
+            UpdateButtonStates();
         }
         private void buttonAscend_Click(object sender, EventArgs e)
         {
