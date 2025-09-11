@@ -42,6 +42,7 @@
             buttonGenerator = new Button();
             labelUpgradeNote = new Label();
             labelGeneratorInfo = new Label();
+            buttonDebug = new Button();
             SuspendLayout();
             // 
             // button1
@@ -177,11 +178,24 @@
             labelGeneratorInfo.Text = "Generators: 0 | Cost: 100 | Points/s: 0";
             labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
             // 
+            // buttonDebug
+            // 
+#if DEBUG
+            buttonDebug.Location = new Point(688, 408);
+            buttonDebug.Name = "buttonDebug";
+            buttonDebug.Size = new Size(100, 30);
+            buttonDebug.TabIndex = 16;
+            buttonDebug.Text = "x10 points";
+            buttonDebug.UseVisualStyleBackColor = true;
+            buttonDebug.Click += buttonDebug_Click;
+#endif
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(buttonDebug);
             Controls.Add(labelGeneratorInfo);
             Controls.Add(buttonGenerator);
             Controls.Add(button1);

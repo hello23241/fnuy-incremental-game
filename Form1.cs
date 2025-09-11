@@ -4,7 +4,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(100000);
+        private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1.0);
         private BigDouble upgradeCost = new BigDouble(10.0);
         private BigDouble prestigeBonus = new BigDouble(0.0);
