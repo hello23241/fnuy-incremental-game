@@ -27,6 +27,19 @@
             buttonPrestige.Visible = false;
             labelPrestigeCost.Visible = false;
             labelPrestigeInfo.Visible = false;
+            UpdateButtonStates();
+        }
+        private void UpdateButtonStates()
+        {
+            // Check if player has enough points for each action
+            buttonUpgrade.Enabled = point >= (int)upgradeCost;
+            buttonPrestige.Enabled = point >= (int)prestigeCost;
+            buttonAscend.Enabled = point >= (int)ascendCost;
+
+            // Optional: Change button colors for visual feedback
+            buttonUpgrade.BackColor = buttonUpgrade.Enabled ? Color.LightGreen : Color.Gray;
+            buttonPrestige.BackColor = buttonPrestige.Enabled ? Color.LightBlue : Color.Gray;
+            buttonAscend.BackColor = buttonAscend.Enabled ? Color.MediumPurple : Color.Gray;
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
@@ -49,6 +62,7 @@
             point += (int)pointMultiplier;
             labelPoint.Text = point.ToString();
             button1.Text = $"+{(int)pointMultiplier} points";
+            UpdateButtonStates();
 
             // Start cooldown
             isCooldown = true;
@@ -68,7 +82,7 @@
                 labelPoint.Text = point.ToString();
                 labelUpgradeCost.Text = $"Upgrade Cost: {upgradeCost:F0}";
                 button1.Text = $"+{(int)pointMultiplier} points";
-
+                UpdateButtonStates();
 
                 UpdateUpgradeInfoLabel();
                 if (cooldownDuration == 1000)
@@ -100,6 +114,7 @@
                 labelAscendCost.Visible = true;
                 labelPrestigeInfo.Visible = true;
                 UpdateUpgradeInfoLabel();
+                UpdateButtonStates();
             }
         }
         private void buttonAscend_Click(object sender, EventArgs e)
@@ -121,6 +136,7 @@
                 button1.Text = $"+{(int)pointMultiplier} points";
                 buttonOpenAscensionShop.Visible = true;
                 UpdateUpgradeInfoLabel();
+                UpdateButtonStates();
             }
         }
 
