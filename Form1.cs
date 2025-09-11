@@ -27,11 +27,6 @@
             buttonPrestige.Visible = false;
             labelPrestigeCost.Visible = false;
             labelPrestigeInfo.Visible = false;
-#if DEBUG
-buttonDebug.Visible = true;
-#else
-buttonDebug.Visible = false;
-#endif
         }
 
         private void CooldownTimer_Tick(object sender, EventArgs e)
