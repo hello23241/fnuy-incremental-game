@@ -211,7 +211,6 @@ namespace WinFormsApp1
             string json = JsonSerializer.Serialize(state);
             File.WriteAllText("savegame.json", json);
         }
-
         private void LoadGame()
         {
             if (!File.Exists("savegame.json")) return;
@@ -241,6 +240,14 @@ namespace WinFormsApp1
             point += (BigDouble)passiveGain;
 
             MessageBox.Show($"Welcome back! You earned {(BigDouble)passiveGain} points while you were away.");
+        }
+        //saves on close
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            SaveGame();
+            MessageBox.Show("Your progress has been saved. See you next time!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            base.OnFormClosing(e);
         }
 
 #if DEBUG
