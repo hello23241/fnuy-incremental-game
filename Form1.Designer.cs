@@ -42,9 +42,7 @@
             buttonGenerator = new Button();
             labelUpgradeNote = new Label();
             labelGeneratorInfo = new Label();
-#if DEBUG
-            buttonDebug = new Button();
-#endif
+            labelSoftCap = new Label();
             SuspendLayout();
             // 
             // button1
@@ -180,26 +178,20 @@
             labelGeneratorInfo.Text = "Generators: 0 | Cost: 100 | Points/s: 0";
             labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
             // 
-            // buttonDebug
+            // labelSoftCap
             // 
-#if DEBUG
-            buttonDebug.Location = new Point(688, 408);
-            buttonDebug.Name = "buttonDebug";
-            buttonDebug.Size = new Size(100, 30);
-            buttonDebug.TabIndex = 16;
-            buttonDebug.Text = "x10 points";
-            buttonDebug.UseVisualStyleBackColor = true;
-            buttonDebug.Click += buttonDebug_Click;
-#endif
+            labelSoftCap.Location = new Point(30, 7);
+            labelSoftCap.Name = "labelSoftCap";
+            labelSoftCap.Size = new Size(77, 20);
+            labelSoftCap.TabIndex = 0;
+            labelSoftCap.Text = "Soft Cap: x1";
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-#if DEBUG
-            Controls.Add(buttonDebug);
-#endif
+            Controls.Add(labelSoftCap);
             Controls.Add(labelGeneratorInfo);
             Controls.Add(buttonGenerator);
             Controls.Add(button1);
@@ -219,7 +211,7 @@
             ResumeLayout(false);
         }
 
-#endregion
+        #endregion
 
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label labelPoint;
@@ -235,6 +227,7 @@
         private System.Windows.Forms.Button buttonAscend;
         private System.Windows.Forms.Label labelAscendCost;
         private System.Windows.Forms.Button buttonOpenAscensionShop;
+        private System.Windows.Forms.Label labelSoftCap;
 #if DEBUG
 private System.Windows.Forms.Button buttonDebug;
 #endif

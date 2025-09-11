@@ -6,7 +6,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(0);
+        private BigDouble point = new BigDouble(100000);
         private BigDouble pointMultiplier = new BigDouble(1.0);
         private BigDouble upgradeCost = new BigDouble(10.0);
         private BigDouble prestigeBonus = new BigDouble(0.0);
@@ -45,17 +45,8 @@ namespace WinFormsApp1
             labelGeneratorInfo.Visible = false;
             buttonGenerator.Visible = false;
             // This is necessary
-            LoadGame();
             UpdateUI();
         }
-#if DEBUG
-        string savePath = "savegame.json";
-    if (File.Exists(savePath))
-    {
-        File.Delete(savePath);
-        Console.WriteLine("Save file deleted (debug mode).");
-    }
-#endif
         private readonly string savePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FnuyIncrementalGame",
@@ -67,6 +58,7 @@ namespace WinFormsApp1
             UpdateButtonStates();
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
+            UpdateSoftCapLabel();
         }
         private void UpdateButtonStates()
         {
@@ -100,17 +92,21 @@ namespace WinFormsApp1
         {
             if (isCooldown) return;
 
-            point += (BigDouble)pointMultiplier;
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble gain = pointMultiplier / divisor;
+            point += gain;
+
             labelPoint.Text = point.ToString("F1");
-            button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
+            button1.Text = $"+{gain.ToString("F1")} points";
+
             UpdateUI();
 
-            // Start cooldown
             isCooldown = true;
             button1.Enabled = false;
             cooldownElapsed = 0;
             cooldownTimer.Start();
         }
+
 
 
         private void buttonUpgrade_Click(object sender, EventArgs e)
@@ -180,8 +176,10 @@ namespace WinFormsApp1
         }
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
-            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier;
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier / divisor;
             point += passiveGain;
+
             labelPoint.Text = point.ToString("F1");
             UpdateUI();
         }
@@ -223,15 +221,7 @@ namespace WinFormsApp1
                 LastSavedTime = DateTime.Now
             };
 
-            string savePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "FnuyIncrementalGame",
-                "savegame.json"
-            );
-
-            // Ensure the directory exists before saving
             Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-
             string json = JsonConvert.SerializeObject(state);
             File.WriteAllText(savePath, json);
         }
@@ -255,6 +245,21 @@ namespace WinFormsApp1
             ApplyOfflineProgress(state.LastSavedTime);
             UpdateUI();
         }
+        //soft cap
+        private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
+        {
+            if (currentPoints < 1000) return 1;
+            if (currentPoints < 10000) return 1 + (currentPoints - 1000) / 9000; // scales from 1 to 2
+            if (currentPoints < 100000) return 2 + (currentPoints - 10000) / 90000 * 2; // scales from 2 to 4
+            if (currentPoints < 1000000) return 4 + (currentPoints - 100000) / 900000 * 4; // scales from 4 to 8
+            return 8;
+        }
+        private void UpdateSoftCapLabel()
+        {
+            BigDouble divisor = GetSoftCapDivisor(point);
+            labelSoftCap.Text = $"Soft Cap: ÷{divisor:F2}";
+        }
+
         private void ApplyOfflineProgress(DateTime lastSaved)
         {
             TimeSpan offlineTime = DateTime.Now - lastSaved;
@@ -269,7 +274,7 @@ namespace WinFormsApp1
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             SaveGame();
-            MessageBox.Show("Your progress has been saved. See you next time!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Your progress has NOT been saved. Enjoy the data wipe!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             base.OnFormClosing(e);
         }
