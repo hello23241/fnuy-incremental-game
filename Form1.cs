@@ -1,6 +1,6 @@
 ﻿using BreakInfinity;
 using System.IO;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace WinFormsApp1
 {
@@ -45,8 +45,23 @@ namespace WinFormsApp1
             labelGeneratorInfo.Visible = false;
             buttonGenerator.Visible = false;
             // This is necessary
-            UpdateButtonStates();
+            LoadGame();
+            UpdateUI();
         }
+#if DEBUG
+        string savePath = "savegame.json";
+    if (File.Exists(savePath))
+    {
+        File.Delete(savePath);
+        Console.WriteLine("Save file deleted (debug mode).");
+    }
+#endif
+        private readonly string savePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FnuyIncrementalGame",
+        "savegame.json"
+);
+
         private void UpdateUI()
         {
             UpdateButtonStates();
@@ -208,15 +223,24 @@ namespace WinFormsApp1
                 LastSavedTime = DateTime.Now
             };
 
-            string json = JsonSerializer.Serialize(state);
-            File.WriteAllText("savegame.json", json);
+            string savePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FnuyIncrementalGame",
+                "savegame.json"
+            );
+
+            // Ensure the directory exists before saving
+            Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+
+            string json = JsonConvert.SerializeObject(state);
+            File.WriteAllText(savePath, json);
         }
         private void LoadGame()
         {
-            if (!File.Exists("savegame.json")) return;
+            if (!File.Exists(savePath)) return;
 
-            string json = File.ReadAllText("savegame.json");
-            var state = JsonSerializer.Deserialize<GameState>(json);
+            string json = File.ReadAllText(savePath);
+            GameState state = JsonConvert.DeserializeObject<GameState>(json);
 
             point = state.Point;
             pointMultiplier = state.PointMultiplier;

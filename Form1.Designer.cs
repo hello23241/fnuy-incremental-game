@@ -42,7 +42,9 @@
             buttonGenerator = new Button();
             labelUpgradeNote = new Label();
             labelGeneratorInfo = new Label();
+#if DEBUG
             buttonDebug = new Button();
+#endif
             SuspendLayout();
             // 
             // button1
@@ -195,7 +197,9 @@
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+#if DEBUG
             Controls.Add(buttonDebug);
+#endif
             Controls.Add(labelGeneratorInfo);
             Controls.Add(buttonGenerator);
             Controls.Add(button1);
@@ -215,7 +219,7 @@
             ResumeLayout(false);
         }
 
-        #endregion
+#endregion
 
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label labelPoint;
