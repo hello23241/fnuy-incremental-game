@@ -156,6 +156,7 @@
             Controls.Add(labelPrestigeCost);
             Controls.Add(buttonAscend);
             Controls.Add(buttonDebug);
+            Controls.Add(buttonOpenAscensionShop);
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
