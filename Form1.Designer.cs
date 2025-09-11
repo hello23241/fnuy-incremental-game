@@ -35,7 +35,9 @@
             buttonPrestige = new Button();
             labelPrestigeCost = new Label();
             labelUpgradeInfo = new Label();
-            buttonDebug = new Button();
+#if DEBUG
+buttonDebug = new Button();
+#endif
             buttonAscend = new Button();
             labelAscendCost = new Label();
             buttonOpenAscensionShop = new Button();
@@ -126,13 +128,19 @@
             // 
             // buttonDebug
             // 
-            buttonDebug.Location = new Point(670, 390);
-            buttonDebug.Name = "buttonDebug";
-            buttonDebug.Size = new Size(100, 40);
-            buttonDebug.TabIndex = 8;
-            buttonDebug.Text = "Debug x10";
-            buttonDebug.UseVisualStyleBackColor = true;
-            buttonDebug.Click += buttonDebug_Click;
+#if DEBUG
+// buttonDebug
+buttonDebug = new Button();
+buttonDebug.Location = new Point(670, 390);
+buttonDebug.Name = "buttonDebug";
+buttonDebug.Size = new Size(100, 40);
+buttonDebug.TabIndex = 8;
+buttonDebug.Text = "Debug x10";
+buttonDebug.UseVisualStyleBackColor = true;
+buttonDebug.Click += buttonDebug_Click;
+Controls.Add(buttonDebug);
+#endif
+
             // 
             // buttonAscend
             // 
@@ -180,7 +188,9 @@
             Controls.Add(buttonAscend);
             Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
-            Controls.Add(buttonDebug);
+#if DEBUG
+Controls.Add(buttonDebug);
+#endif
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
@@ -197,11 +207,12 @@
         private System.Windows.Forms.Label labelPrestigeInfo;
         private System.Windows.Forms.Label labelUpgradeInfo;
         private System.Windows.Forms.Label labelUpgradeNote;
-        private System.Windows.Forms.Button buttonDebug;
         private System.Windows.Forms.Button buttonAscend;
         private System.Windows.Forms.Label labelAscendCost;
         private System.Windows.Forms.Button buttonOpenAscensionShop;
-
+#if DEBUG
+private System.Windows.Forms.Button buttonDebug;
+#endif
 
     }
 }

@@ -28,9 +28,9 @@
             labelPrestigeCost.Visible = false;
             labelPrestigeInfo.Visible = false;
 #if DEBUG
-            buttonDebug.Visible = true;
+buttonDebug.Visible = true;
 #else
-            buttonDebug.Visible = false;
+buttonDebug.Visible = false;
 #endif
         }
 
