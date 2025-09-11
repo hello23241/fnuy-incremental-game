@@ -1,4 +1,6 @@
 ﻿using BreakInfinity;
+using System.IO;
+using System.Text.Json;
 
 namespace WinFormsApp1
 {
@@ -186,6 +188,57 @@ namespace WinFormsApp1
                 UpdateButtonStates();
                 UpdateGeneratorInfo();
             }
+        }
+        //offline progress
+        private void SaveGame()
+        {
+            var state = new GameState
+            {
+                Point = point,
+                PointMultiplier = pointMultiplier,
+                UpgradeCost = upgradeCost,
+                PrestigeBonus = prestigeBonus,
+                PrestigeCost = prestigeCost,
+                GeneratorCost = generatorCost,
+                GeneratorCount = generatorCount,
+                AscendCost = ascendCost,
+                AscensionPoints = ascensionPoints,
+                LastSavedTime = DateTime.Now
+            };
+
+            string json = JsonSerializer.Serialize(state);
+            File.WriteAllText("savegame.json", json);
+        }
+
+        private void LoadGame()
+        {
+            if (!File.Exists("savegame.json")) return;
+
+            string json = File.ReadAllText("savegame.json");
+            var state = JsonSerializer.Deserialize<GameState>(json);
+
+            point = state.Point;
+            pointMultiplier = state.PointMultiplier;
+            upgradeCost = state.UpgradeCost;
+            prestigeBonus = state.PrestigeBonus;
+            prestigeCost = state.PrestigeCost;
+            generatorCost = state.GeneratorCost;
+            generatorCount = state.GeneratorCount;
+            ascendCost = state.AscendCost;
+            ascensionPoints = state.AscensionPoints;
+
+            ApplyOfflineProgress(state.LastSavedTime);
+            UpdateUI();
+        }
+        private void ApplyOfflineProgress(DateTime lastSaved)
+        {
+            TimeSpan offlineTime = DateTime.Now - lastSaved;
+            BigDouble seconds = offlineTime.TotalSeconds;
+
+            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier * seconds;
+            point += (BigDouble)passiveGain;
+
+            MessageBox.Show($"Welcome back! You earned {(BigDouble)passiveGain} points while you were away.");
         }
 
 #if DEBUG
