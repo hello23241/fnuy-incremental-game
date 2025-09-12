@@ -6,7 +6,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(10);
+        private BigDouble point = new BigDouble(1000);
         private BigDouble pointMultiplier = new BigDouble(1);
         private BigDouble upgradeCost = new BigDouble(10);
         private BigDouble prestigeBonus = new BigDouble(0);
@@ -34,6 +34,10 @@ namespace WinFormsApp1
             generatorTimer.Interval = 1000; // 1 second
             generatorTimer.Tick += GeneratorTimer_Tick;
             generatorTimer.Start();
+            // hide locked features by default
+            buttonPrestige.Visible = labelPrestigeCost.Visible = labelPrestigeInfo.Visible = false;
+            buttonGenerator.Visible = labelGeneratorInfo.Visible = labelSoftCap.Visible = false;
+            buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
             // This is necessary
             LoadGame();
             UpdateUI();
@@ -47,7 +51,6 @@ namespace WinFormsApp1
         private void UpdateUI()
         {
             UpdateButtonStates();
-            UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
 
@@ -118,8 +121,6 @@ namespace WinFormsApp1
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
                 button1.Text = $"+{FormatNumbers(pointMultiplier)} points";
                 UpdateUI();
-
-                UpdateUpgradeInfoLabel();
                 if (cooldownDuration == 1000)
                 {
                     cooldownDuration = 500;
@@ -151,7 +152,7 @@ namespace WinFormsApp1
         {
             if (generatorCount == 0)
             { return; }
-            BigDouble pps = Math.Pow(10,generatorCount) * 0.01 * pointMultiplier;
+            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier;
             labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Point/second: {FormatNumbers(pps)}";
         }
 
@@ -216,6 +217,7 @@ namespace WinFormsApp1
                 GeneratorCount = generatorCount,
                 AscendCost = ascendCost,
                 AscensionPoints = ascensionPoints,
+                CooldownDuration = cooldownDuration,
                 LastSavedTime = DateTime.Now,
 
                 HasUnlockedPrestige = buttonPrestige.Visible,
@@ -263,6 +265,11 @@ namespace WinFormsApp1
             generatorCount = state.GeneratorCount;
             ascendCost = state.AscendCost;
             ascensionPoints = state.AscensionPoints;
+            cooldownDuration = state.CooldownDuration;
+            if (cooldownDuration == 500)
+            {
+                UnlockPrestigeFeature();
+            }
 
             ApplyOfflineProgress(state.LastSavedTime);
             ApplyUnlocks(state);
@@ -284,6 +291,7 @@ namespace WinFormsApp1
             labelSoftCap.Visible = true;
             buttonAscend.Visible = true;
             labelAscendCost.Visible = true;
+            labelPrestigeInfo.Visible = true;
             SaveGame();
         }
 
@@ -295,10 +303,10 @@ namespace WinFormsApp1
         //soft cap
         private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
         {
-            if (point>10000)
+            if (point > 10000)
             {
                 BigDouble baseSoftCap = 2; // starting soft cap value
-                int oom = (int)Math.Floor(BigDouble.Log10(point))-4; // get order of magnitude
+                int oom = (int)Math.Floor(BigDouble.Log10(point)) - 4; // get order of magnitude
                 BigDouble softCap = baseSoftCap * BigDouble.Pow(2, oom);
                 return softCap;
             }
@@ -365,7 +373,7 @@ namespace WinFormsApp1
         {
             pointMultiplier *= 10;
             button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
-            UpdateUpgradeInfoLabel();
+            UpdateUI();
         }
 #endif
 
@@ -374,17 +382,6 @@ namespace WinFormsApp1
             // Pass current ascension points to the shop
             AscensionShop shop = new AscensionShop(ascensionPoints);
             shop.ShowDialog(); // Opens the shop as a modal window
-        }
-
-        private void UpdateUpgradeInfoLabel()
-        {
-            BigDouble multiplier = 1.01 + prestigeBonus;
-            labelUpgradeInfo.Text = $"improve click gain by 1 + x*({FormatNumbers(multiplier)})";
-        }
-
-        private void labelUpgradeInfo_Click(object sender, EventArgs e)
-        {
-
         }
     }
 }

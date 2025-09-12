@@ -110,7 +110,6 @@
             labelUpgradeInfo.TabIndex = 5;
             labelUpgradeInfo.Text = "improve click gain by 1 + x*(1.01+[prestige*0.02])";
             labelUpgradeInfo.TextAlign = ContentAlignment.MiddleLeft;
-            labelUpgradeInfo.Click += labelUpgradeInfo_Click;
             // 
             // buttonAscend
             // 

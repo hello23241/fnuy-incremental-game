@@ -16,6 +16,7 @@ namespace WinFormsApp1
         public BigDouble AscendCost;
         public BigDouble AscensionPoints;
         public DateTime LastSavedTime;
+        public int CooldownDuration;
         //hidden variables
         public bool HasUnlockedPrestige;
         public bool HasUnlockedGenerators;
