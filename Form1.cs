@@ -258,33 +258,75 @@ namespace WinFormsApp1
         }
         private void LoadGame()
         {
-            if (!File.Exists(savePath)) return;
-
-            string json = File.ReadAllText(savePath);
-            var settings = new JsonSerializerSettings();
-            settings.Converters.Add(new BigDoubleConverter());
-
-            GameState state = JsonConvert.DeserializeObject<GameState>(json, settings);
-
-            point = state.Point;
-            pointMultiplier = state.PointMultiplier;
-            upgradeCost = state.UpgradeCost;
-            prestigeBonus = state.PrestigeBonus;
-            prestigeCost = state.PrestigeCost;
-            generatorCost = state.GeneratorCost;
-            generatorCount = state.GeneratorCount;
-            ascendCost = state.AscendCost;
-            ascensionPoints = state.AscensionPoints;
-            cooldownDuration = state.CooldownDuration;
-            if (cooldownDuration == 500)
+            try
             {
-                UnlockPrestigeFeature();
-            }
+                if (!File.Exists(savePath))
+                {
+                    SaveGame(); // Create a fresh save file
+                    return;
+                }
 
-            ApplyOfflineProgress(state.LastSavedTime);
-            ApplyUnlocks(state);
-            UpdateUI();
+                string json = File.ReadAllText(savePath);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    SaveGame(); // Handle empty file
+                    return;
+                }
+
+                var settings = new JsonSerializerSettings();
+                settings.Converters.Add(new BigDoubleConverter());
+
+                GameState state = JsonConvert.DeserializeObject<GameState>(json, settings);
+                if (state == null)
+                    throw new Exception("Deserialized GameState is null");
+
+                point = state.Point;
+                pointMultiplier = state.PointMultiplier;
+                upgradeCost = state.UpgradeCost;
+                prestigeBonus = state.PrestigeBonus;
+                prestigeCost = state.PrestigeCost;
+                generatorCost = state.GeneratorCost;
+                generatorCount = state.GeneratorCount;
+                ascendCost = state.AscendCost;
+                ascensionPoints = state.AscensionPoints;
+                cooldownDuration = state.CooldownDuration;
+
+                if (cooldownDuration == 500)
+                {
+                    UnlockPrestigeFeature();
+                }
+
+                ApplyOfflineProgress(state.LastSavedTime);
+                ApplyUnlocks(state);
+                UpdateUI();
+            }
+            catch (Exception ex)
+            {
+                LogCrash(ex);
+                MessageBox.Show(
+                    "Your save file is missing or corrupted. A new save has been created.",
+                    "Load Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+
+                // Reset to defaults and create a fresh save
+                point = BigDouble.Zero;
+                pointMultiplier = new BigDouble(1);
+                upgradeCost = new BigDouble(10);
+                prestigeBonus = BigDouble.Zero;
+                prestigeCost = new BigDouble(1000);
+                generatorCost = new BigDouble(100);
+                generatorCount = 0;
+                ascendCost = new BigDouble(1000000);
+                ascensionPoints = BigDouble.Zero;
+                cooldownDuration = 1000;
+
+                SaveGame();
+                UpdateUI();
+            }
         }
+
         private void UnlockPrestigeFeature()
         {
             buttonPrestige.Visible = true;
@@ -392,6 +434,19 @@ namespace WinFormsApp1
             // Pass current ascension points to the shop
             AscensionShop shop = new AscensionShop(ascensionPoints);
             shop.ShowDialog(); // Opens the shop as a modal window
+        }
+        private void LogCrash(Exception ex)
+        {
+            string crashLogPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FnuyIncrementalGame",
+                "crashlog.txt"
+            );
+
+            Directory.CreateDirectory(Path.GetDirectoryName(crashLogPath));
+
+            string log = $"[{DateTime.Now}] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n\n";
+            File.AppendAllText(crashLogPath, log);
         }
     }
 }

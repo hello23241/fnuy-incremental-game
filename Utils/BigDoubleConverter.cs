@@ -7,10 +7,20 @@ public class BigDoubleConverter : JsonConverter<BigDouble>
     {
         writer.WriteValue(value.ToString());
     }
-
-    public override BigDouble ReadJson(JsonReader reader, Type objectType, BigDouble existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override BigDouble ReadJson(JsonReader reader,
+        Type objectType,
+        BigDouble existingValue,
+        bool hasExistingValue,
+        JsonSerializer serializer)
     {
-        string s = (string)reader.Value;
+        if (reader.TokenType == JsonToken.Null || reader.Value == null)
+            return BigDouble.Zero;
+
+        string s = reader.Value.ToString();
+        if (string.IsNullOrWhiteSpace(s))
+            return BigDouble.Zero;
+
         return BigDouble.Parse(s);
     }
+
 }
