@@ -5,7 +5,7 @@ using System.Security.Policy;
 
 namespace WinFormsApp1
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1);
@@ -23,9 +23,11 @@ namespace WinFormsApp1
         private bool isCooldown = false;
         private const double PrestigeIncrement = 0.02;
         //constructor
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
+            this.Text = "Myrtle incremental";
+            this.Icon = new Icon("Resources/NianBean.ico");
             //cooldown on "click me"
             cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50;

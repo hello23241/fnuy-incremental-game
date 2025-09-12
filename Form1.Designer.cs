@@ -1,6 +1,6 @@
 ﻿namespace WinFormsApp1
 {
-    partial class Form1
+    partial class MainForm
     {
         /// <summary>
         ///  Required designer variable.
@@ -185,7 +185,7 @@
             labelSoftCap.TabIndex = 0;
             labelSoftCap.Text = "Soft Cap: x1";
             // 
-            // Form1
+            // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -205,8 +205,8 @@
             Controls.Add(buttonAscend);
             Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
-            Name = "Form1";
-            Text = "Form1";
+            Name = "MainForm";
+            Text = "MainForm";
             ResumeLayout(false);
 #if DEBUG
             buttonDebug = new Button();

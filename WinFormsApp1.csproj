@@ -9,6 +9,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Utils\NewFolder\**" />
+    <EmbeddedResource Remove="Utils\NewFolder\**" />
+    <None Remove="Utils\NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\NianBean.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\NianBean.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
