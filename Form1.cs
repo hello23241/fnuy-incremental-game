@@ -1,6 +1,7 @@
 ﻿using BreakInfinity;
 using System.IO;
 using Newtonsoft.Json;
+using System.Security.Policy;
 
 namespace WinFormsApp1
 {
@@ -54,14 +55,13 @@ namespace WinFormsApp1
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
-
+            BigDouble gain = pointMultiplier / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
-            button1.Text = $"+{FormatNumbers(pointMultiplier)} points";
+            button1.Text = $"+{gain} points";
             labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
             labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
             labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
         }
-
         private void UpdateButtonStates()
         {
             // Check if player has enough points for each action
@@ -159,8 +159,9 @@ namespace WinFormsApp1
         {
             if (generatorCount == 0)
             { return; }
-            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier;
-            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Point/second: {FormatNumbers(pps)}";
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier / divisor;
+            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Points/second: {FormatNumbers(pps)}";
         }
 
         private void buttonGenerator_Click(object sender, EventArgs e)
@@ -180,7 +181,7 @@ namespace WinFormsApp1
             {
                 BigDouble divisor = GetSoftCapDivisor(point);
 
-                BigDouble passiveGain = BigDouble.Pow(10, generatorCount) * 0.1 * pointMultiplier / divisor;
+                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier / divisor;
 
                 point += passiveGain;
 
@@ -364,7 +365,7 @@ namespace WinFormsApp1
             BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier * seconds;
             point += (BigDouble)passiveGain;
 
-            MessageBox.Show($"Welcome back! You earned {(BigDouble)passiveGain} points while you were away.");
+            MessageBox.Show($"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.");
         }
         //saves on close
         protected override void OnFormClosing(FormClosingEventArgs e)

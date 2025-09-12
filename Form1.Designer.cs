@@ -208,6 +208,18 @@
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
+#if DEBUG
+            buttonDebug = new Button();
+            buttonDebug.Location = new Point(30, 260);
+            buttonDebug.Name = "buttonDebug";
+            buttonDebug.Size = new Size(100, 30);
+            buttonDebug.TabIndex = 16;
+            buttonDebug.Text = "Debug Boost";
+            buttonDebug.UseVisualStyleBackColor = true;
+            buttonDebug.Click += buttonDebug_Click;
+            Controls.Add(buttonDebug);
+#endif
+
         }
 
         #endregion
