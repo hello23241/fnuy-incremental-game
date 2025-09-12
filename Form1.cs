@@ -51,6 +51,7 @@ namespace WinFormsApp1
         private void UpdateUI()
         {
             UpdateButtonStates();
+            UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
 
@@ -130,7 +131,13 @@ namespace WinFormsApp1
                 }
             }
         }
-
+        private void UpdateUpgradeInfoLabel()
+        {
+            // compute how much a single upgrade will add right now
+            BigDouble gain = 1 + pointMultiplier * prestigeBonus;
+            labelUpgradeInfo.Text =
+                $"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
+        }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
             if (point >= (BigDouble)prestigeCost)
