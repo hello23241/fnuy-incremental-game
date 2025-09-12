@@ -1,1 +1,1 @@
-Inspired by every other incremental I've played
+Inspired by every other incrementals I've played.
