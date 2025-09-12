@@ -7,7 +7,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(1000);
+        private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1);
         private BigDouble upgradeCost = new BigDouble(10);
         private BigDouble prestigeBonus = new BigDouble(0);
@@ -57,7 +57,7 @@ namespace WinFormsApp1
             UpdateSoftCapLabel();
             BigDouble gain = pointMultiplier / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
-            button1.Text = $"+{gain} points";
+            button1.Text = $"+{FormatNumbers(gain)} points";
             labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
             labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
             labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
