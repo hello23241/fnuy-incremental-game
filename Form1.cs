@@ -7,13 +7,13 @@ namespace WinFormsApp1
     public partial class Form1 : Form
     {
         private BigDouble point = new BigDouble(0);
-        private BigDouble pointMultiplier = new BigDouble(1.0);
-        private BigDouble upgradeCost = new BigDouble(10.0);
-        private BigDouble prestigeBonus = new BigDouble(0.0);
-        private BigDouble prestigeCost = new BigDouble(1000.0);
-        private BigDouble generatorCost = new BigDouble(100.0);
-        private BigDouble ascendCost = new BigDouble(1000000.0);
-        private BigDouble ascensionPoints = 0;
+        private BigDouble pointMultiplier = new BigDouble(1);
+        private BigDouble upgradeCost = new BigDouble(10);
+        private BigDouble prestigeBonus = new BigDouble(0);
+        private BigDouble prestigeCost = new BigDouble(1000);
+        private BigDouble generatorCost = new BigDouble(100);
+        private BigDouble ascendCost = new BigDouble(1000000);
+        private BigDouble ascensionPoints = new BigDouble(0);
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
@@ -46,6 +46,7 @@ namespace WinFormsApp1
             buttonGenerator.Visible = false;
             labelSoftCap.Visible = false;
             // This is necessary
+            LoadGame();
             UpdateUI();
         }
         private readonly string savePath = Path.Combine(
@@ -115,7 +116,7 @@ namespace WinFormsApp1
             if (point >= (BigDouble)upgradeCost)
             {
                 point -= (BigDouble)upgradeCost;
-                pointMultiplier = 1 + pointMultiplier * (1.01 + prestigeBonus);
+                pointMultiplier = 1 + pointMultiplier * prestigeBonus;
                 upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
                 labelPoint.Text = FormatNumbers(point);
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
@@ -142,7 +143,7 @@ namespace WinFormsApp1
                 point = 0;
                 prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
-                upgradeCost = 5.0;
+                upgradeCost = 10.0;
                 prestigeCost = BigDouble.Pow(prestigeCost, 1.05);
                 labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
                 labelPoint.Text = point.ToString("F1");
@@ -172,7 +173,7 @@ namespace WinFormsApp1
                 point -= (BigDouble)generatorCost;
                 generatorCount++;
                 generatorCost = BigDouble.Pow(generatorCost, 2);
-                labelPoint.Text = point.ToString("E3"); // e.g., "1.23E+12"
+                labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
             }
         }
@@ -186,7 +187,7 @@ namespace WinFormsApp1
 
                 point += passiveGain;
 
-                labelPoint.Text = point.ToString("F1");
+                labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
             }
         }
@@ -196,7 +197,7 @@ namespace WinFormsApp1
             {
                 point = 0;
                 pointMultiplier = 1.0;
-                upgradeCost = 5.0;
+                upgradeCost = 10.0;
                 prestigeBonus = 0.0;
                 prestigeCost = 1000.0;
                 ascendCost = BigDouble.Pow(ascendCost, 1.1); // Optional scaling
@@ -228,8 +229,11 @@ namespace WinFormsApp1
                 LastSavedTime = DateTime.Now
             };
 
+            var settings = new JsonSerializerSettings();
+            settings.Converters.Add(new BigDoubleConverter());
+
             Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-            string json = JsonConvert.SerializeObject(state);
+            string json = JsonConvert.SerializeObject(state, settings);
             File.WriteAllText(savePath, json);
         }
         private void LoadGame()
@@ -237,7 +241,10 @@ namespace WinFormsApp1
             if (!File.Exists(savePath)) return;
 
             string json = File.ReadAllText(savePath);
-            GameState state = JsonConvert.DeserializeObject<GameState>(json);
+            var settings = new JsonSerializerSettings();
+            settings.Converters.Add(new BigDoubleConverter());
+
+            GameState state = JsonConvert.DeserializeObject<GameState>(json, settings);
 
             point = state.Point;
             pointMultiplier = state.PointMultiplier;
@@ -252,6 +259,7 @@ namespace WinFormsApp1
             ApplyOfflineProgress(state.LastSavedTime);
             UpdateUI();
         }
+
         //soft cap
         private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
         {
@@ -315,7 +323,7 @@ namespace WinFormsApp1
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             SaveGame();
-            MessageBox.Show("Your progress has NOT been saved. Enjoy the data wipe!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Your progress has been saved!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             base.OnFormClosing(e);
         }
