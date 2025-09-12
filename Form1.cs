@@ -6,7 +6,7 @@ namespace WinFormsApp1
 {
     public partial class Form1 : Form
     {
-        private BigDouble point = new BigDouble(0);
+        private BigDouble point = new BigDouble(10);
         private BigDouble pointMultiplier = new BigDouble(1);
         private BigDouble upgradeCost = new BigDouble(10);
         private BigDouble prestigeBonus = new BigDouble(0);
@@ -34,17 +34,6 @@ namespace WinFormsApp1
             generatorTimer.Interval = 1000; // 1 second
             generatorTimer.Tick += GeneratorTimer_Tick;
             generatorTimer.Start();
-            // Hiding buttons at the start
-
-            buttonAscend.Visible = false;
-            labelAscendCost.Visible = false;
-            buttonOpenAscensionShop.Visible = false;
-            buttonPrestige.Visible = false;
-            labelPrestigeCost.Visible = false;
-            labelPrestigeInfo.Visible = false;
-            labelGeneratorInfo.Visible = false;
-            buttonGenerator.Visible = false;
-            labelSoftCap.Visible = false;
             // This is necessary
             LoadGame();
             UpdateUI();
@@ -61,7 +50,14 @@ namespace WinFormsApp1
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
+
+            labelPoint.Text = $"Points: {FormatNumbers(point)}";
+            button1.Text = $"+{FormatNumbers(pointMultiplier)} points";
+            labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
+            labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
+            labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
         }
+
         private void UpdateButtonStates()
         {
             // Check if player has enough points for each action
@@ -116,7 +112,7 @@ namespace WinFormsApp1
             if (point >= (BigDouble)upgradeCost)
             {
                 point -= (BigDouble)upgradeCost;
-                pointMultiplier = 1 + pointMultiplier * prestigeBonus;
+                pointMultiplier += 1 + pointMultiplier * prestigeBonus;
                 upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
                 labelPoint.Text = FormatNumbers(point);
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
@@ -127,9 +123,7 @@ namespace WinFormsApp1
                 if (cooldownDuration == 1000)
                 {
                     cooldownDuration = 500;
-                    buttonPrestige.Visible = true;
-                    labelPrestigeCost.Visible = true;
-                    labelUpgradeNote.Visible = false;
+                    UnlockPrestigeFeature();
                     labelPrestigeInfo.Text = $"increases the factor of upgrade by {PrestigeIncrement}";
 
                 }
@@ -149,12 +143,7 @@ namespace WinFormsApp1
                 labelPoint.Text = point.ToString("F1");
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
                 button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
-                buttonAscend.Visible = true;
-                labelAscendCost.Visible = true;
-                labelPrestigeInfo.Visible = true;
-                labelGeneratorInfo.Visible = true;
-                buttonGenerator.Visible = true;
-                labelSoftCap.Visible = true;
+                UnlockGeneratorFeature();
                 UpdateUI();
             }
         }
@@ -209,6 +198,7 @@ namespace WinFormsApp1
                 labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
                 labelPoint.Text = $"Points: {FormatNumbers(point)}";
                 buttonOpenAscensionShop.Visible = true;
+                UnlockAscensionFeature();
                 UpdateUI();
             }
         }
@@ -226,7 +216,11 @@ namespace WinFormsApp1
                 GeneratorCount = generatorCount,
                 AscendCost = ascendCost,
                 AscensionPoints = ascensionPoints,
-                LastSavedTime = DateTime.Now
+                LastSavedTime = DateTime.Now,
+
+                HasUnlockedPrestige = buttonPrestige.Visible,
+                HasUnlockedGenerators = buttonGenerator.Visible,
+                HasUnlockedAscension = buttonAscend.Visible
             };
 
             var settings = new JsonSerializerSettings();
@@ -235,6 +229,20 @@ namespace WinFormsApp1
             Directory.CreateDirectory(Path.GetDirectoryName(savePath));
             string json = JsonConvert.SerializeObject(state, settings);
             File.WriteAllText(savePath, json);
+        }
+        private void ApplyUnlocks(GameState state)
+        {
+            buttonPrestige.Visible = state.HasUnlockedPrestige;
+            labelPrestigeCost.Visible = state.HasUnlockedPrestige;
+            labelUpgradeNote.Visible = !state.HasUnlockedPrestige;
+
+            buttonGenerator.Visible = state.HasUnlockedGenerators;
+            labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
+            labelSoftCap.Visible = state.HasUnlockedGenerators;
+
+            buttonAscend.Visible = state.HasUnlockedAscension;
+            labelAscendCost.Visible = state.HasUnlockedAscension;
+            buttonOpenAscensionShop.Visible = state.HasUnlockedAscension;
         }
         private void LoadGame()
         {
@@ -257,9 +265,33 @@ namespace WinFormsApp1
             ascensionPoints = state.AscensionPoints;
 
             ApplyOfflineProgress(state.LastSavedTime);
+            ApplyUnlocks(state);
             UpdateUI();
         }
+        private void UnlockPrestigeFeature()
+        {
+            buttonPrestige.Visible = true;
+            labelPrestigeCost.Visible = true;
+            labelUpgradeNote.Visible = false;
 
+            // Immediately persist
+            SaveGame();
+        }
+        private void UnlockGeneratorFeature()
+        {
+            buttonGenerator.Visible = true;
+            labelGeneratorInfo.Visible = true;
+            labelSoftCap.Visible = true;
+            buttonAscend.Visible = true;
+            labelAscendCost.Visible = true;
+            SaveGame();
+        }
+
+        private void UnlockAscensionFeature()
+        {
+            buttonOpenAscensionShop.Visible = true;
+            SaveGame();
+        }
         //soft cap
         private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
         {
