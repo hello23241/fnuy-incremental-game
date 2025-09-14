@@ -147,7 +147,7 @@ namespace WinFormsApp1
                 prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCost = 10.0;
-                prestigeCost = BigDouble.Pow(prestigeCost, 1.5);
+                prestigeCost = BigDouble.Pow(prestigeCost, 1.4);
                 labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
                 labelPoint.Text = point.ToString("F1");
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
@@ -406,13 +406,29 @@ namespace WinFormsApp1
 
         private void ApplyOfflineProgress(DateTime lastSaved)
         {
+            // Calculate how long the player was away
             TimeSpan offlineTime = DateTime.Now - lastSaved;
             BigDouble seconds = offlineTime.TotalSeconds;
-            BigDouble passiveGain =  Math.Pow(10, generatorCount) * 0.01 * pointMultiplier * seconds;
-            point += (BigDouble)passiveGain;
+            if (generatorCount <= 0 || seconds <= 0) return;
 
-            MessageBox.Show($"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.");
+            // Apply the soft cap divisor as of the starting point
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount)
+                                      * 0.01
+                                      * pointMultiplier
+                                      / divisor;
+
+            BigDouble passiveGain = ratePerSecond * seconds;
+            point += passiveGain;
+
+            MessageBox.Show(
+              $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away."
+            );
+
+            UpdateUI();    // Refresh labels/buttons to reflect the new point total
+            SaveGame();    // Persist the updated state immediately
         }
+
         //saves on close
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
