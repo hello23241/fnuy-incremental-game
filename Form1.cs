@@ -19,7 +19,7 @@ namespace WinFormsApp1
         private readonly double upgradeScale = 1.05;
 
         private readonly BigDouble basePrestigeCost = new BigDouble(1000);
-        private readonly double prestigeScale = 1.4;
+        private readonly double prestigeScale = 3;
 
         private readonly BigDouble baseAscendCost = new BigDouble(1_000_000);
         private readonly double ascendScale = 2.5;
@@ -109,16 +109,13 @@ namespace WinFormsApp1
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void Button1_Click(object sender, EventArgs e)
         {
             if (isCooldown) return;
 
             BigDouble divisor = GetSoftCapDivisor(point);
             BigDouble gain = pointMultiplier / divisor;
             point += gain;
-
-            labelPoint.Text = FormatNumbers(point);
-            button1.Text = $"+{FormatNumbers(gain)} points";
 
             UpdateUI();
 
@@ -137,8 +134,12 @@ namespace WinFormsApp1
             {
                 point -= cost;
                 upgradeCount++;
-                pointMultiplier += 1 + pointMultiplier * prestigeBonus;
-                // No more upgradeCost = Pow(...)
+                pointMultiplier = pointMultiplier * prestigeBonus + 1;
+                if (cooldownDuration == 1000)
+                {
+                    UnlockPrestigeFeature();
+                    cooldownDuration = 500;
+                }
                 UpdateUI();
             }
         }
@@ -147,7 +148,7 @@ namespace WinFormsApp1
             // compute how much a single upgrade will add right now
             BigDouble gain = 1 + pointMultiplier * prestigeBonus;
             labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
-            labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(PrestigeIncrement)}";
+            labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(PrestigeIncrement)} / {prestigeCount+1}";
         }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
@@ -155,7 +156,7 @@ namespace WinFormsApp1
             if (point >= cost)
             {
                 point = 0;
-                prestigeBonus += PrestigeIncrement;
+                prestigeBonus += PrestigeIncrement/(prestigeCount + 1);
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCount = 0;
                 prestigeCount++;
@@ -302,10 +303,10 @@ namespace WinFormsApp1
                 pointMultiplier = state.PointMultiplier;
                 upgradeCount = state.UpgradeCount;
                 prestigeBonus = state.PrestigeBonus;
-                upgradeCount = state.UpgradeCount;
+                prestigeCount = state.PrestigeCount;
                 generatorCost = state.GeneratorCost;
                 generatorCount = state.GeneratorCount;
-                upgradeCount = state.UpgradeCount;
+                ascendCount = state.AscensionCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
 
@@ -369,15 +370,50 @@ namespace WinFormsApp1
         //soft cap
         private BigDouble GetSoftCapDivisor(BigDouble point)
         {
-            if (point > 10000)
+            // No cap below 1 000
+            if (point <= 1_000)
+                return BigDouble.One;
+
+            // “Decades” above 10^3: e.g. point=2e6 → logDec≈3.3010; 
+            // at 1e4→1.0, 1e5→2.0, etc.
+            double logDec = (double)(BigDouble.Log10(point) - 3.0);
+
+            // Compute Gamma(logDec + 1) for a smooth factorial
+            double gammaValue = LanczosGamma(logDec + 1.0);
+
+            // Convert back to BigDouble
+            return new BigDouble(gammaValue);
+        }
+
+        // Lanczos approximation for Gamma(z)
+        private static double LanczosGamma(double z)
+        {
+            // Coefficients for g=7, n=9 (Robust for z > 0)
+            double[] p = {
+         0.99999999999980993,
+        676.5203681218851,
+       -1259.1392167224028,
+        771.32342877765313,
+       -176.61502916214059,
+         12.507343278686905,
+         -0.13857109526572012,
+          9.9843695780195716e-6,
+          1.5056327351493116e-7
+    };
+
+            if (z < 0.5)
             {
-                BigDouble baseSoftCap = 2;                  // starting value
-                                                            // how many decades above 10⁴ we are (e.g. at 10⁵: 1; at 5·10⁵: ≈1.7; at 10⁶: 2)
-                BigDouble logFactor = BigDouble.Log10(point) - 4;
-                // softCap = 2 * 2^logFactor
-                return baseSoftCap * BigDouble.Pow(2, logFactor);
+                // Reflection for z < 0.5
+                return Math.PI / (Math.Sin(Math.PI * z) * LanczosGamma(1.0 - z));
             }
-            return BigDouble.One;
+
+            z -= 1.0;
+            double x = p[0];
+            for (int i = 1; i < p.Length; i++)
+                x += p[i] / (z + i);
+
+            double t = z + p.Length - 0.5;
+            return Math.Sqrt(2 * Math.PI) * Math.Pow(t, z + 0.5) * Math.Exp(-t) * x;
         }
         private void UpdateSoftCapLabel()
         {
@@ -421,7 +457,16 @@ namespace WinFormsApp1
             // Calculate how long the player was away
             TimeSpan offlineTime = DateTime.Now - lastSaved;
             BigDouble seconds = offlineTime.TotalSeconds;
-            if (generatorCount <= 0 || seconds <= 0) return;
+            if (generatorCount <= 0 || seconds <= 0)
+            {
+                if (prestigeCount==0)
+                MessageBox.Show(
+              $"Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
+                else
+                    MessageBox.Show(
+                  $"Welcome back! You currently don't own any generator for offline progress.");
+                return;
+            };
 
             // Apply the soft cap divisor as of the starting point
             BigDouble divisor = GetSoftCapDivisor(point);
