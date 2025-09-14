@@ -8,13 +8,13 @@ namespace WinFormsApp1
     {
         public BigDouble Point;
         public BigDouble PointMultiplier;
-        public BigDouble UpgradeCost;
+        public int UpgradeCount;
         public BigDouble PrestigeBonus;
-        public BigDouble PrestigeCost;
+        public int PrestigeCount;
         public BigDouble GeneratorCost;
         public int GeneratorCount;
-        public BigDouble AscendCost;
         public BigDouble AscensionPoints;
+        public int AscensionCount;
         public DateTime LastSavedTime;
         public int CooldownDuration;
         public double OfflineMultiplier;

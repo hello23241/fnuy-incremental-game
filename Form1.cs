@@ -9,13 +9,26 @@ namespace WinFormsApp1
     {
         private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1);
-        private BigDouble upgradeCost = new BigDouble(10);
         private BigDouble prestigeBonus = new BigDouble(0);
-        private BigDouble prestigeCost = new BigDouble(1000);
         private BigDouble PrestigeIncrement = new BigDouble(0.1);
         private BigDouble generatorCost = new BigDouble(100);
-        private BigDouble ascendCost = new BigDouble(1000000);
         private BigDouble ascensionPoints = new BigDouble(0);
+
+        // Base costs and scaling factors
+        private readonly BigDouble baseUpgradeCost = new BigDouble(10);
+        private readonly double upgradeScale = 1.05;
+
+        private readonly BigDouble basePrestigeCost = new BigDouble(1000);
+        private readonly double prestigeScale = 1.4;
+
+        private readonly BigDouble baseAscendCost = new BigDouble(1_000_000);
+        private readonly double ascendScale = 2.5;
+
+        // Purchase counts (persist these, not the cost)
+        private int upgradeCount = 0;
+        private int prestigeCount = 0;
+        private int ascendCount = 0;
+
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
@@ -61,16 +74,19 @@ namespace WinFormsApp1
             BigDouble gain = pointMultiplier / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
             button1.Text = $"+{FormatNumbers(gain)} points";
-            labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
-            labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
-            labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
+            labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(GetUpgradeCost())}";
+            labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(GetPrestigeCost())}";
+            labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(GetAscendCost())}";
+            buttonUpgrade.Enabled = point >= GetUpgradeCost();
+            buttonPrestige.Enabled = point >= GetPrestigeCost();
+            buttonAscend.Enabled = point >= GetAscendCost();
         }
         private void UpdateButtonStates()
         {
             // Check if player has enough points for each action
-            buttonUpgrade.Enabled = point >= (BigDouble)upgradeCost;
-            buttonPrestige.Enabled = point >= (BigDouble)prestigeCost;
-            buttonAscend.Enabled = point >= (BigDouble)ascendCost;
+            buttonUpgrade.Enabled = point >= GetUpgradeCost();
+            buttonPrestige.Enabled = point >= GetPrestigeCost();
+            buttonAscend.Enabled = point >= GetAscendCost();
             buttonGenerator.Enabled = point >= (BigDouble)generatorCost;
 
             //Change button colors for visual feedback
@@ -116,20 +132,14 @@ namespace WinFormsApp1
 
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {
-            if (point >= (BigDouble)upgradeCost)
+            var cost = GetUpgradeCost();
+            if (point >= cost)
             {
-                point -= (BigDouble)upgradeCost;
+                point -= cost;
+                upgradeCount++;
                 pointMultiplier += 1 + pointMultiplier * prestigeBonus;
-                upgradeCost = BigDouble.Pow(upgradeCost, 1.05);
-                labelPoint.Text = FormatNumbers(point);
-                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
-                button1.Text = $"+{FormatNumbers(pointMultiplier)} points";
+                // No more upgradeCost = Pow(...)
                 UpdateUI();
-                if (cooldownDuration == 1000)
-                {
-                    cooldownDuration = 500;
-                    UnlockPrestigeFeature();
-                }
             }
         }
         private void UpdateUpgradeInfoLabel()
@@ -141,17 +151,14 @@ namespace WinFormsApp1
         }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
-            if (point >= (BigDouble)prestigeCost)
+            var cost = GetPrestigeCost();
+            if (point >= cost)
             {
                 point = 0;
                 prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
-                upgradeCost = 10.0;
-                prestigeCost = BigDouble.Pow(prestigeCost, 1.4);
-                labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
-                labelPoint.Text = point.ToString("F1");
-                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
-                button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
+                upgradeCount = 0;
+                prestigeCount++;
                 UnlockGeneratorFeature();
                 UpdateUI();
             }
@@ -192,40 +199,49 @@ namespace WinFormsApp1
         }
         private void buttonAscend_Click(object sender, EventArgs e)
         {
-            if (point >= ascendCost)
+            var cost = GetAscendCost();
+            if (point >= cost)
             {
                 point = 0;
                 pointMultiplier = 1.0;
-                upgradeCost = 10.0;
+                upgradeCount = 0;
                 prestigeBonus = 0.0;
-                prestigeCost = 1000.0;
-                ascendCost = BigDouble.Pow(ascendCost, 2.5);
-                ascensionPoints += 1;
-
-                labelPoint.Text = point.ToString("F1");
-                labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
-                labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
-                labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(ascendCost)}";
-                labelPoint.Text = $"Points: {FormatNumbers(point)}";
-                buttonOpenAscensionShop.Visible = true;
+                prestigeCount = 0;
+                ascendCount++;
+                ascensionPoints++;
                 UnlockAscensionFeature();
                 UpdateUI();
             }
         }
+        private BigDouble GetUpgradeCost()
+        {
+            return baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
+        }
+
+        private BigDouble GetPrestigeCost()
+        {
+            return basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
+        }
+
+        private BigDouble GetAscendCost()
+        {
+            return baseAscendCost * BigDouble.Pow(ascendScale, ascendCount);
+        }
+
         //offline progress
         private void SaveGame()
         {
             var state = new GameState
             {
                 Point = point,
+                UpgradeCount = upgradeCount,
                 PointMultiplier = pointMultiplier,
-                UpgradeCost = upgradeCost,
                 PrestigeBonus = prestigeBonus,
-                PrestigeCost = prestigeCost,
+                PrestigeCount = prestigeCount,
                 GeneratorCost = generatorCost,
                 GeneratorCount = generatorCount,
-                AscendCost = ascendCost,
                 AscensionPoints = ascensionPoints,
+                AscensionCount = ascendCount,
                 CooldownDuration = cooldownDuration,
                 LastSavedTime = DateTime.Now,
 
@@ -284,12 +300,12 @@ namespace WinFormsApp1
 
                 point = state.Point;
                 pointMultiplier = state.PointMultiplier;
-                upgradeCost = state.UpgradeCost;
+                upgradeCount = state.UpgradeCount;
                 prestigeBonus = state.PrestigeBonus;
-                prestigeCost = state.PrestigeCost;
+                upgradeCount = state.UpgradeCount;
                 generatorCost = state.GeneratorCost;
                 generatorCount = state.GeneratorCount;
-                ascendCost = state.AscendCost;
+                upgradeCount = state.UpgradeCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
 
@@ -315,15 +331,11 @@ namespace WinFormsApp1
                 // Reset to defaults and create a fresh save
                 point = BigDouble.Zero;
                 pointMultiplier = new BigDouble(1);
-                upgradeCost = new BigDouble(10);
                 prestigeBonus = BigDouble.Zero;
-                prestigeCost = new BigDouble(1000);
                 generatorCost = new BigDouble(100);
                 generatorCount = 0;
-                ascendCost = new BigDouble(1000000);
                 ascensionPoints = BigDouble.Zero;
                 cooldownDuration = 1000;
-
                 SaveGame();
                 UpdateUI();
             }
