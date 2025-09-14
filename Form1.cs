@@ -12,6 +12,7 @@ namespace WinFormsApp1
         private BigDouble upgradeCost = new BigDouble(10);
         private BigDouble prestigeBonus = new BigDouble(0);
         private BigDouble prestigeCost = new BigDouble(1000);
+        private BigDouble PrestigeIncrement = new BigDouble(0.1);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascendCost = new BigDouble(1000000);
         private BigDouble ascensionPoints = new BigDouble(0);
@@ -20,8 +21,8 @@ namespace WinFormsApp1
         private System.Windows.Forms.Timer cooldownTimer;
         private int cooldownDuration = 1000; // milliseconds
         private int cooldownElapsed = 0;
+        private double offlineMultiplier = 0.05;
         private bool isCooldown = false;
-        private const double PrestigeIncrement = 0.02;
         //constructor
         public MainForm()
         {
@@ -128,8 +129,6 @@ namespace WinFormsApp1
                 {
                     cooldownDuration = 500;
                     UnlockPrestigeFeature();
-                    labelPrestigeInfo.Text = $"increases the factor of upgrade by {PrestigeIncrement}";
-
                 }
             }
         }
@@ -137,8 +136,8 @@ namespace WinFormsApp1
         {
             // compute how much a single upgrade will add right now
             BigDouble gain = 1 + pointMultiplier * prestigeBonus;
-            labelUpgradeInfo.Text =
-                $"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
+            labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
+            labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(PrestigeIncrement)}";
         }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
@@ -148,7 +147,7 @@ namespace WinFormsApp1
                 prestigeBonus += PrestigeIncrement;
                 pointMultiplier = 1.0 + prestigeBonus;
                 upgradeCost = 10.0;
-                prestigeCost = BigDouble.Pow(prestigeCost, 1.05);
+                prestigeCost = BigDouble.Pow(prestigeCost, 1.5);
                 labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(prestigeCost)}";
                 labelPoint.Text = point.ToString("F1");
                 labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(upgradeCost)}";
@@ -200,7 +199,7 @@ namespace WinFormsApp1
                 upgradeCost = 10.0;
                 prestigeBonus = 0.0;
                 prestigeCost = 1000.0;
-                ascendCost = BigDouble.Pow(ascendCost, 1.1); // Optional scaling
+                ascendCost = BigDouble.Pow(ascendCost, 2.5);
                 ascensionPoints += 1;
 
                 labelPoint.Text = point.ToString("F1");
@@ -232,7 +231,8 @@ namespace WinFormsApp1
 
                 HasUnlockedPrestige = buttonPrestige.Visible,
                 HasUnlockedGenerators = buttonGenerator.Visible,
-                HasUnlockedAscension = buttonAscend.Visible
+                HasUnlockedAscension = buttonAscend.Visible,
+                HasAscended = buttonOpenAscensionShop.Visible,
             };
 
             var settings = new JsonSerializerSettings();
@@ -251,10 +251,12 @@ namespace WinFormsApp1
             buttonGenerator.Visible = state.HasUnlockedGenerators;
             labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
             labelSoftCap.Visible = state.HasUnlockedGenerators;
+            labelPrestigeInfo.Visible = state.HasUnlockedGenerators;
 
             buttonAscend.Visible = state.HasUnlockedAscension;
             labelAscendCost.Visible = state.HasUnlockedAscension;
-            buttonOpenAscensionShop.Visible = state.HasUnlockedAscension;
+
+            buttonOpenAscensionShop.Visible = state.HasAscended;
         }
         private void LoadGame()
         {
@@ -353,16 +355,17 @@ namespace WinFormsApp1
             SaveGame();
         }
         //soft cap
-        private BigDouble GetSoftCapDivisor(BigDouble currentPoints)
+        private BigDouble GetSoftCapDivisor(BigDouble point)
         {
             if (point > 10000)
             {
-                BigDouble baseSoftCap = 2; // starting soft cap value
-                int oom = (int)Math.Floor(BigDouble.Log10(point)) - 4; // get order of magnitude
-                BigDouble softCap = baseSoftCap * BigDouble.Pow(2, oom);
-                return softCap;
+                BigDouble baseSoftCap = 2;                  // starting value
+                                                            // how many decades above 10⁴ we are (e.g. at 10⁵: 1; at 5·10⁵: ≈1.7; at 10⁶: 2)
+                BigDouble logFactor = BigDouble.Log10(point) - 4;
+                // softCap = 2 * 2^logFactor
+                return baseSoftCap * BigDouble.Pow(2, logFactor);
             }
-            return 1;
+            return BigDouble.One;
         }
         private void UpdateSoftCapLabel()
         {
@@ -405,8 +408,7 @@ namespace WinFormsApp1
         {
             TimeSpan offlineTime = DateTime.Now - lastSaved;
             BigDouble seconds = offlineTime.TotalSeconds;
-
-            BigDouble passiveGain = generatorCount * 0.1 * pointMultiplier * seconds;
+            BigDouble passiveGain =  Math.Pow(10, generatorCount) * 0.01 * pointMultiplier * seconds;
             point += (BigDouble)passiveGain;
 
             MessageBox.Show($"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.");
