@@ -386,7 +386,7 @@ namespace WinFormsApp1
             double gammaValue = LanczosGamma(logDec + 1.0);
 
             // Convert back to BigDouble
-            return new BigDouble(gammaValue);
+            return new BigDouble(gammaValue + 1.0);
         }
 
         // Lanczos approximation for Gamma(z)
