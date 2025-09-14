@@ -10,7 +10,7 @@ namespace WinFormsApp1
         private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1);
         private BigDouble prestigeBonus = new BigDouble(0);
-        private BigDouble PrestigeIncrement = new BigDouble(0.1);
+        private BigDouble PrestigeIncrement = new BigDouble(0.05);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascensionPoints = new BigDouble(0);
 
@@ -134,7 +134,7 @@ namespace WinFormsApp1
             {
                 point -= cost;
                 upgradeCount++;
-                pointMultiplier = pointMultiplier * prestigeBonus + 1;
+                pointMultiplier += 1 + pointMultiplier * prestigeBonus;
                 if (cooldownDuration == 1000)
                 {
                     UnlockPrestigeFeature();
@@ -146,7 +146,8 @@ namespace WinFormsApp1
         private void UpdateUpgradeInfoLabel()
         {
             // compute how much a single upgrade will add right now
-            BigDouble gain = 1 + pointMultiplier * prestigeBonus;
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble gain = 1 + pointMultiplier * prestigeBonus / divisor;
             labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
             labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(PrestigeIncrement)} / {prestigeCount+1}";
         }
@@ -216,7 +217,10 @@ namespace WinFormsApp1
         }
         private BigDouble GetUpgradeCost()
         {
+
+            if (upgradeCount <=47)
             return baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
+            else return baseUpgradeCost * BigDouble.Pow(upgradeScale+0.1, upgradeCount);
         }
 
         private BigDouble GetPrestigeCost()
@@ -473,13 +477,15 @@ namespace WinFormsApp1
             BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount)
                                       * 0.01
                                       * pointMultiplier
+                                      * offlineMultiplier
                                       / divisor;
 
             BigDouble passiveGain = ratePerSecond * seconds;
             point += passiveGain;
 
             MessageBox.Show(
-              $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away."
+              $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.\n" +
+              $"Current offline multi: x{offlineMultiplier}."
             );
 
             UpdateUI();    // Refresh labels/buttons to reflect the new point total
