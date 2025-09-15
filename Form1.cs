@@ -12,7 +12,7 @@ namespace WinFormsApp1
         private BigDouble point = new BigDouble(0);
         private BigDouble pointMultiplier = new BigDouble(1);
         private BigDouble prestigeBonus = new BigDouble(0);
-        private BigDouble PrestigeIncrement = new BigDouble(0.05);
+        private BigDouble PrestigeIncrement = new BigDouble(2);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascensionPoints = new BigDouble(0);
 
@@ -74,17 +74,38 @@ namespace WinFormsApp1
             try
             {
                 string json = await client.GetStringAsync(manifestUrl);
+
+                if (string.IsNullOrWhiteSpace(json))
+                    throw new Exception("Manifest response was empty.");
+
                 dynamic manifest = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                if (manifest == null)
+                    throw new Exception("Manifest deserialization failed.");
+
                 string latestVersion = manifest.latestVersion;
                 string downloadUrl = manifest.downloadUrl;
                 string changelog = manifest.changelog;
+                string releaseDateStr = manifest.releaseDate;
+
+                // Parse releaseDate in YYYY-MM-DD or YYYYMMDD format
+                DateTime releaseDate;
+                if (!DateTime.TryParseExact(releaseDateStr, new[] { "yyyyMMdd", "yyyy-MM-dd" }, null, System.Globalization.DateTimeStyles.None, out releaseDate))
+                {
+                    releaseDate = DateTime.MinValue; // fallback if parsing fails
+                }
+                int daysAgo = releaseDate == DateTime.MinValue ? 0 : (DateTime.Now.Date - releaseDate.Date).Days;
+                string lastUpdateText = releaseDate == DateTime.MinValue
+                    ? "Last update: unknown"
+                    : $"Last update: {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago";
 
                 string currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+                string changelogMessage = $"{lastUpdateText}\n\nChangelog:\n{changelog}";
 
                 if (new Version(latestVersion) > new Version(currentVersion))
                 {
                     var result = MessageBox.Show(
-                        $"A new version ({latestVersion}) is available!\n\nChangelog:\n{changelog}\n\nDo you want to download it now?",
+                        $"A new version ({latestVersion}) is available!\n\n{changelogMessage}\n\nDo you want to download it now?",
                         "Update Available",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Information);
@@ -100,7 +121,7 @@ namespace WinFormsApp1
                 }
                 else
                 {
-                    MessageBox.Show("You are running the latest version.", "No Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"You are running the latest version.\n\n{changelogMessage}", "No Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -177,7 +198,7 @@ namespace WinFormsApp1
             {
                 point -= cost;
                 upgradeCount++;
-                pointMultiplier += 1 + pointMultiplier * prestigeBonus;
+                pointMultiplier += 1 + pointMultiplier * prestigeBonus / 100;
                 if (cooldownDuration == 1000)
                 {
                     UnlockPrestigeFeature();
@@ -191,8 +212,12 @@ namespace WinFormsApp1
             // compute how much a single upgrade will add right now
             BigDouble divisor = GetSoftCapDivisor(point);
             BigDouble gain = 1 + pointMultiplier * prestigeBonus / divisor;
+            BigDouble prestigeGain = PrestigeIncrement / 100;
             labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
-            labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(PrestigeIncrement)} / {prestigeCount+1}";
+            if (prestigeGain <0.1)
+                labelPrestigeInfo.Text = $"increases the factor of upgrade by {(prestigeGain)} / {prestigeCount + 1}";
+            else
+                labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(prestigeGain)} / {prestigeCount + 1}";
         }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
@@ -200,8 +225,8 @@ namespace WinFormsApp1
             if (point >= cost)
             {
                 point = 0;
-                prestigeBonus += PrestigeIncrement/(prestigeCount + 1);
-                pointMultiplier = 1.0 + prestigeBonus;
+                prestigeBonus += PrestigeIncrement/(prestigeCount + 1)/100;
+                pointMultiplier = 1.0 + prestigeBonus / 100;
                 upgradeCount = 0;
                 prestigeCount++;
                 UnlockGeneratorFeature();

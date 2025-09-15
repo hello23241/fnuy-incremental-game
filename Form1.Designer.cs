@@ -144,7 +144,7 @@
             // 
             labelPrestigeInfo.Location = new Point(262, 146);
             labelPrestigeInfo.Name = "labelPrestigeInfo";
-            labelPrestigeInfo.Size = new Size(221, 30);
+            labelPrestigeInfo.Size = new Size(272, 30);
             labelPrestigeInfo.TabIndex = 13;
             labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
             labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
@@ -219,7 +219,6 @@
             buttonDebug.Click += buttonDebug_Click;
             Controls.Add(buttonDebug);
 #endif
-
         }
 
         #endregion
