@@ -2,6 +2,8 @@
 using System.IO;
 using Newtonsoft.Json;
 using System.Security.Policy;
+using System.Net.Http;
+using System.Reflection;
 
 namespace WinFormsApp1
 {
@@ -41,7 +43,7 @@ namespace WinFormsApp1
         {
             InitializeComponent();
             this.Text = "Myrtle incremental";
-            this.Icon = new Icon("Resources/NianBean.ico");
+            this.Icon = Properties.Resources.NianBean;
             //cooldown on "click me"
             cooldownTimer = new System.Windows.Forms.Timer();
             cooldownTimer.Interval = 50;
@@ -57,6 +59,7 @@ namespace WinFormsApp1
             buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
             // This is necessary
             LoadGame();
+            CheckForUpdates();
             UpdateUI();
         }
         private readonly string savePath = Path.Combine(
@@ -64,7 +67,47 @@ namespace WinFormsApp1
         "FnuyIncrementalGame",
         "savegame.json"
 );
+        private async void CheckForUpdates()
+        {
+            string manifestUrl = "https://hello23241.github.io/fnuy-incremental-manifest/manifest.json";
+            using var client = new HttpClient();
+            try
+            {
+                string json = await client.GetStringAsync(manifestUrl);
+                dynamic manifest = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                string latestVersion = manifest.latestVersion;
+                string downloadUrl = manifest.downloadUrl;
+                string changelog = manifest.changelog;
 
+                string currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+                if (new Version(latestVersion) > new Version(currentVersion))
+                {
+                    var result = MessageBox.Show(
+                        $"A new version ({latestVersion}) is available!\n\nChangelog:\n{changelog}\n\nDo you want to download it now?",
+                        "Update Available",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = downloadUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("You are running the latest version.", "No Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to check for updates: {ex.Message}", "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void UpdateUI()
         {
             UpdateButtonStates();
