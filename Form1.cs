@@ -10,8 +10,7 @@ namespace WinFormsApp1
     public partial class MainForm : Form
     {
         private BigDouble point = new BigDouble(0);
-        private BigDouble pointMultiplier = new BigDouble(1);
-        private BigDouble prestigeBonus = new BigDouble(0);
+        private BigDouble pointGain = new BigDouble(1);
         private BigDouble PrestigeIncrement = new BigDouble(2);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascensionPoints = new BigDouble(0);
@@ -30,7 +29,6 @@ namespace WinFormsApp1
         private int upgradeCount = 0;
         private int prestigeCount = 0;
         private int ascendCount = 0;
-
         private int generatorCount = 0;
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
@@ -135,7 +133,7 @@ namespace WinFormsApp1
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
-            BigDouble gain = pointMultiplier / GetSoftCapDivisor(point);
+            BigDouble gain = pointGain / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
             button1.Text = $"+{FormatNumbers(gain)} points";
             labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(GetUpgradeCost())}";
@@ -177,9 +175,7 @@ namespace WinFormsApp1
         {
             if (isCooldown) return;
 
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gain = pointMultiplier / divisor;
-            point += gain;
+            point += pointGain;
 
             UpdateUI();
 
@@ -194,11 +190,12 @@ namespace WinFormsApp1
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {
             var cost = GetUpgradeCost();
+            BigDouble divisor = GetSoftCapDivisor(point);
             if (point >= cost)
             {
                 point -= cost;
                 upgradeCount++;
-                pointMultiplier += 1 + pointMultiplier * prestigeBonus / 100;
+                pointGain += 1 + pointGain * prestigeCount * PrestigeIncrement / 100 / divisor;
                 if (cooldownDuration == 1000)
                 {
                     UnlockPrestigeFeature();
@@ -211,7 +208,7 @@ namespace WinFormsApp1
         {
             // compute how much a single upgrade will add right now
             BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gain = 1 + pointMultiplier * prestigeBonus / divisor;
+            BigDouble gain = 1 + pointGain * prestigeCount * PrestigeIncrement / 100 / divisor;
             BigDouble prestigeGain = PrestigeIncrement / 100;
             labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
             if (prestigeGain <0.1)
@@ -225,9 +222,8 @@ namespace WinFormsApp1
             if (point >= cost)
             {
                 point = 0;
-                prestigeBonus += PrestigeIncrement/(prestigeCount + 1)/100;
-                pointMultiplier = 1.0 + prestigeBonus / 100;
                 upgradeCount = 0;
+                pointGain = 1.0;
                 prestigeCount++;
                 UnlockGeneratorFeature();
                 UpdateUI();
@@ -237,8 +233,7 @@ namespace WinFormsApp1
         {
             if (generatorCount == 0)
             { return; }
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier / divisor;
+            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointGain;
             labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Points/second: {FormatNumbers(pps)}";
         }
 
@@ -257,9 +252,7 @@ namespace WinFormsApp1
         {
             if (generatorCount > 0)
             {
-                BigDouble divisor = GetSoftCapDivisor(point);
-
-                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointMultiplier / divisor;
+                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain;
 
                 point += passiveGain;
 
@@ -273,9 +266,8 @@ namespace WinFormsApp1
             if (point >= cost)
             {
                 point = 0;
-                pointMultiplier = 1.0;
+                pointGain = 1.0;
                 upgradeCount = 0;
-                prestigeBonus = 0.0;
                 prestigeCount = 0;
                 ascendCount++;
                 ascensionPoints++;
@@ -285,10 +277,7 @@ namespace WinFormsApp1
         }
         private BigDouble GetUpgradeCost()
         {
-
-            if (upgradeCount <=47)
             return baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
-            else return baseUpgradeCost * BigDouble.Pow(upgradeScale+0.1, upgradeCount);
         }
 
         private BigDouble GetPrestigeCost()
@@ -308,8 +297,7 @@ namespace WinFormsApp1
             {
                 Point = point,
                 UpgradeCount = upgradeCount,
-                PointMultiplier = pointMultiplier,
-                PrestigeBonus = prestigeBonus,
+                PointMultiplier = pointGain,
                 PrestigeCount = prestigeCount,
                 GeneratorCost = generatorCost,
                 GeneratorCount = generatorCount,
@@ -372,9 +360,8 @@ namespace WinFormsApp1
                     throw new Exception("Deserialized GameState is null");
 
                 point = state.Point;
-                pointMultiplier = state.PointMultiplier;
+                pointGain = state.PointMultiplier;
                 upgradeCount = state.UpgradeCount;
-                prestigeBonus = state.PrestigeBonus;
                 prestigeCount = state.PrestigeCount;
                 generatorCost = state.GeneratorCost;
                 generatorCount = state.GeneratorCount;
@@ -403,8 +390,7 @@ namespace WinFormsApp1
 
                 // Reset to defaults and create a fresh save
                 point = BigDouble.Zero;
-                pointMultiplier = new BigDouble(1);
-                prestigeBonus = BigDouble.Zero;
+                pointGain = new BigDouble(1);
                 generatorCost = new BigDouble(100);
                 generatorCount = 0;
                 ascensionPoints = BigDouble.Zero;
@@ -544,7 +530,7 @@ namespace WinFormsApp1
             BigDouble divisor = GetSoftCapDivisor(point);
             BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount)
                                       * 0.01
-                                      * pointMultiplier
+                                      * pointGain
                                       * offlineMultiplier
                                       / divisor;
 
@@ -572,8 +558,8 @@ namespace WinFormsApp1
 #if DEBUG
         private void buttonDebug_Click(object sender, EventArgs e)
         {
-            pointMultiplier *= 10;
-            button1.Text = $"+{((BigDouble)pointMultiplier).ToString("F1")} points";
+            pointGain *= 10;
+            button1.Text = $"+{((BigDouble)pointGain).ToString("F1")} points";
             UpdateUI();
         }
 #endif
