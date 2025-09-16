@@ -11,7 +11,7 @@ namespace WinFormsApp1
     {
         private BigDouble point = new BigDouble(0);
         private BigDouble pointGain = new BigDouble(1);
-        private BigDouble PrestigeIncrement = new BigDouble(2);
+        private BigDouble PrestigeIncrement = new BigDouble(3);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascensionPoints = new BigDouble(0);
 
@@ -195,7 +195,9 @@ namespace WinFormsApp1
             {
                 point -= cost;
                 upgradeCount++;
-                pointGain += 1 + pointGain * prestigeCount * PrestigeIncrement / 100 / divisor;
+                // Use log2 for prestigeCount to apply diminishing returns
+                double prestigeEffect = Math.Max(1, BigDouble.Log2(prestigeCount + 1));
+                pointGain += 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
                 if (cooldownDuration == 1000)
                 {
                     UnlockPrestigeFeature();
@@ -206,15 +208,12 @@ namespace WinFormsApp1
         }
         private void UpdateUpgradeInfoLabel()
         {
-            // compute how much a single upgrade will add right now
             BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gain = 1 + pointGain * prestigeCount * PrestigeIncrement / 100 / divisor;
+            double prestigeEffect = Math.Max(1, BigDouble.Log2(prestigeCount + 1));
+            BigDouble gain = 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
             BigDouble prestigeGain = PrestigeIncrement / 100;
-            labelUpgradeInfo.Text =$"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
-            if (prestigeGain <0.1)
-                labelPrestigeInfo.Text = $"increases the factor of upgrade by {(prestigeGain)} / {prestigeCount + 1}";
-            else
-                labelPrestigeInfo.Text = $"increases the factor of upgrade by {FormatNumbers(prestigeGain)} / {prestigeCount + 1}";
+            labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
+            labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (diminishing returns)";
         }
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
