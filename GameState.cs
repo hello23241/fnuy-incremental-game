@@ -22,5 +22,6 @@ namespace WinFormsApp1
         public bool HasUnlockedGenerators;
         public bool HasUnlockedAscension;
         public bool HasAscended;
+        public bool[] PurchasedAscensionUpgrades = new bool[4];
     }
 }
