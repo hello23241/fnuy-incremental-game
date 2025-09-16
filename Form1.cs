@@ -1,7 +1,6 @@
 ﻿using BreakInfinity;
 using System.IO;
 using Newtonsoft.Json;
-using System.Security.Policy;
 using System.Net.Http;
 using System.Reflection;
 
@@ -9,19 +8,22 @@ namespace WinFormsApp1
 {
     public partial class MainForm : Form
     {
-        private BigDouble point = new BigDouble(0);
-        private BigDouble pointGain = new BigDouble(1);
-        private BigDouble PrestigeIncrement = new BigDouble(3);
+        // Core game state
+        private BigDouble point = BigDouble.Zero;
+        private BigDouble pointGain = BigDouble.One;
+        private BigDouble PrestigeIncrement = new BigDouble(4);
         private BigDouble generatorCost = new BigDouble(100);
-        private BigDouble ascensionPoints = new BigDouble(0);
+        private BigDouble ascensionPoints = BigDouble.Zero;
+        private readonly BigDouble softcapThreshold = new BigDouble(1000);
+        private System.Windows.Forms.Timer transcendFlashTimer;
+        private int transcendFlashStep = 0;
+        private readonly BigDouble transcendCost = new BigDouble(1_000_000_000);
 
         // Base costs and scaling factors
         private readonly BigDouble baseUpgradeCost = new BigDouble(10);
         private readonly double upgradeScale = 1.05;
-
         private readonly BigDouble basePrestigeCost = new BigDouble(1000);
         private readonly double prestigeScale = 3;
-
         private readonly BigDouble baseAscendCost = new BigDouble(1_000_000);
         private readonly double ascendScale = 2.5;
 
@@ -30,41 +32,138 @@ namespace WinFormsApp1
         private int prestigeCount = 0;
         private int ascendCount = 0;
         private int generatorCount = 0;
+        private bool[] upgradesBought = new bool[4];
+        private int PermanentUpgradeBonus => upgradesBought != null && upgradesBought.Length > 1 && upgradesBought[0] ? 5 : 0;
+        private int EffectiveUpgradeCount => upgradeCount + PermanentUpgradeBonus;
+
+        // Timers and cooldowns
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
-        private int cooldownDuration = 1000; // milliseconds
+        private System.Windows.Forms.Timer holdTimer;
+        private int cooldownDuration = 1000; // ms
         private int cooldownElapsed = 0;
         private double offlineMultiplier = 0.05;
         private bool isCooldown = false;
-        //constructor
+
+        // Save path
+        private readonly string savePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FnuyIncrementalGame",
+            "savegame.json");
+        private Panel panelTitleBar;
+        private Button buttonMinimize;
+        private Button buttonClose;
+        private Label labelTitle;
+
         public MainForm()
         {
             InitializeComponent();
             this.Text = "Myrtle incremental";
             this.Icon = Properties.Resources.NianBean;
-            //cooldown on "click me"
-            cooldownTimer = new System.Windows.Forms.Timer();
-            cooldownTimer.Interval = 50;
+
+            // --- Hold Timer for button1 ---
+            holdTimer = new System.Windows.Forms.Timer();
+            holdTimer.Tick += HoldTimer_Tick;
+            button1.MouseDown += Button1_MouseDown;
+            button1.MouseUp += Button1_MouseUp;
+            button1.MouseLeave += Button1_MouseUp;
+
+            // --- Custom Title Bar Panel ---
+            panelTitleBar = new Panel();
+            panelTitleBar.Size = new Size(this.ClientSize.Width, 28);
+            panelTitleBar.Location = new Point(0, 0);
+            panelTitleBar.BackColor = Color.FromArgb(24, 24, 24);
+            panelTitleBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            this.Controls.Add(panelTitleBar);
+            panelTitleBar.BringToFront();
+
+            // --- Title label ---
+            labelTitle = new Label();
+            labelTitle.Text = "Myrtle incremental";
+            labelTitle.ForeColor = Color.Gainsboro;
+            labelTitle.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            labelTitle.Location = new Point(10, 4);
+            labelTitle.AutoSize = true;
+            panelTitleBar.Controls.Add(labelTitle);
+
+            // --- Hold Timer for button1 ---
+            button1.MouseDown += Button1_MouseDown;
+            button1.MouseUp += Button1_MouseUp;
+            button1.MouseLeave += Button1_MouseUp;
+
+            //Transcend flash timer
+            transcendFlashTimer = new System.Windows.Forms.Timer();
+            transcendFlashTimer.Interval = 200;
+            transcendFlashTimer.Tick += TranscendFlashTimer_Tick;
+
+            // --- Custom Minimize Button ---
+            buttonMinimize = new Button();
+            buttonMinimize.Size = new Size(40, 28);
+            buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
+            buttonMinimize.Text = "—";
+            buttonMinimize.FlatStyle = FlatStyle.Flat;
+            buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
+            buttonMinimize.ForeColor = Color.Gainsboro;
+            buttonMinimize.FlatAppearance.BorderSize = 0;
+            buttonMinimize.MouseEnter += (s, e) => buttonMinimize.BackColor = Color.FromArgb(64, 64, 64);
+            buttonMinimize.MouseLeave += (s, e) => buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
+            buttonMinimize.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
+            panelTitleBar.Controls.Add(buttonMinimize);
+
+            // --- Custom Close Button ---
+            buttonClose = new Button();
+            buttonClose.Size = new Size(40, 28);
+            buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
+            buttonClose.Text = "X";
+            buttonClose.FlatStyle = FlatStyle.Flat;
+            buttonClose.BackColor = Color.FromArgb(32, 32, 32);
+            buttonClose.ForeColor = Color.Gainsboro;
+            buttonClose.FlatAppearance.BorderSize = 0;
+            buttonClose.MouseEnter += (s, e) => buttonClose.BackColor = Color.FromArgb(64, 64, 64);
+            buttonClose.MouseLeave += (s, e) => buttonClose.BackColor = Color.FromArgb(32, 32, 32);
+            buttonClose.Click += (s, e) => this.Close();
+            panelTitleBar.Controls.Add(buttonClose);
+
+            // --- Adjust button positions on resize ---
+            panelTitleBar.Resize += (s, e) =>
+            {
+                buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
+                buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
+            };
+
+            // --- Dragging support on the panel ---
+            panelTitleBar.MouseDown += panelTitleBar_MouseDown;
+            panelTitleBar.MouseMove += panelTitleBar_MouseMove;
+            panelTitleBar.MouseUp += panelTitleBar_MouseUp;
+
+            // Remove system title bar
+            this.FormBorderStyle = FormBorderStyle.None;
+
+            // Cooldown for click
+            cooldownTimer = new System.Windows.Forms.Timer { Interval = 50 };
             cooldownTimer.Tick += CooldownTimer_Tick;
-            //timer for the point generator
-            generatorTimer = new System.Windows.Forms.Timer();
-            generatorTimer.Interval = 1000; // 1 second
+
+            // Timer for point generator
+            generatorTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             generatorTimer.Tick += GeneratorTimer_Tick;
             generatorTimer.Start();
-            // hide locked features by default
+
+            // Hide locked features by default
             buttonPrestige.Visible = labelPrestigeCost.Visible = labelPrestigeInfo.Visible = false;
             buttonGenerator.Visible = labelGeneratorInfo.Visible = labelSoftCap.Visible = false;
             buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
-            // This is necessary
+            buttonTranscend.Visible = labelTranscendCost.Visible = false;
+
+#if DEBUG
+            buttonDebug.Visible = true;
+            buttonDebug.Click += buttonDebug_Click;
+#endif
             LoadGame();
+            labelCooldown.Text = "";
             CheckForUpdates();
             UpdateUI();
         }
-        private readonly string savePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FnuyIncrementalGame",
-        "savegame.json"
-);
+
         private async void CheckForUpdates()
         {
             string manifestUrl = "https://hello23241.github.io/fnuy-incremental-manifest/manifest.json";
@@ -72,11 +171,10 @@ namespace WinFormsApp1
             try
             {
                 string json = await client.GetStringAsync(manifestUrl);
-
                 if (string.IsNullOrWhiteSpace(json))
                     throw new Exception("Manifest response was empty.");
 
-                dynamic manifest = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                dynamic manifest = JsonConvert.DeserializeObject(json);
                 if (manifest == null)
                     throw new Exception("Manifest deserialization failed.");
 
@@ -85,19 +183,16 @@ namespace WinFormsApp1
                 string changelog = manifest.changelog;
                 string releaseDateStr = manifest.releaseDate;
 
-                // Parse releaseDate in YYYY-MM-DD or YYYYMMDD format
                 DateTime releaseDate;
                 if (!DateTime.TryParseExact(releaseDateStr, new[] { "yyyyMMdd", "yyyy-MM-dd" }, null, System.Globalization.DateTimeStyles.None, out releaseDate))
-                {
-                    releaseDate = DateTime.MinValue; // fallback if parsing fails
-                }
+                    releaseDate = DateTime.MinValue;
+
                 int daysAgo = releaseDate == DateTime.MinValue ? 0 : (DateTime.Now.Date - releaseDate.Date).Days;
                 string lastUpdateText = releaseDate == DateTime.MinValue
                     ? "Last update: unknown"
                     : $"Last update: {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago";
 
                 string currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
                 string changelogMessage = $"{lastUpdateText}\n\nChangelog:\n{changelog}";
 
                 if (new Version(latestVersion) > new Version(currentVersion))
@@ -127,65 +222,120 @@ namespace WinFormsApp1
                 MessageBox.Show($"Failed to check for updates: {ex.Message}", "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         private void UpdateUI()
         {
             UpdateButtonStates();
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
+
             BigDouble gain = pointGain / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
             button1.Text = $"+{FormatNumbers(gain)} points";
             labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(GetUpgradeCost())}";
             labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(GetPrestigeCost())}";
             labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(GetAscendCost())}";
+            labelPointGain.Text = $"Point Gain: {FormatNumbers(pointGain)}";
+            labelTranscendCost.Text = $"Transcend Cost: {FormatNumbers(transcendCost)}";
+
+            if (upgradeCount != 0)
+            {
+                if (PermanentUpgradeBonus > 0)
+                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount} (+{PermanentUpgradeBonus} permanent)";
+                else
+                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
+                labelUpgradeNote.Visible = true;
+            }
+            else
+            {
+                labelUpgradeNote.Visible = false;
+            }
+
+            // Transcend button logic
+            buttonTranscend.Enabled = point >= transcendCost;
+            if (point >= transcendCost)
+            {
+                if (!transcendFlashTimer.Enabled)
+                    transcendFlashTimer.Start();
+            }
+            else
+            {
+                transcendFlashTimer.Stop();
+                buttonTranscend.BackColor = Color.Gray; // Match other disabled buttons
+            }
+
             buttonUpgrade.Enabled = point >= GetUpgradeCost();
             buttonPrestige.Enabled = point >= GetPrestigeCost();
             buttonAscend.Enabled = point >= GetAscendCost();
         }
         private void UpdateButtonStates()
         {
-            // Check if player has enough points for each action
             buttonUpgrade.Enabled = point >= GetUpgradeCost();
             buttonPrestige.Enabled = point >= GetPrestigeCost();
             buttonAscend.Enabled = point >= GetAscendCost();
-            buttonGenerator.Enabled = point >= (BigDouble)generatorCost;
+            buttonGenerator.Enabled = point >= generatorCost;
 
-            //Change button colors for visual feedback
             buttonUpgrade.BackColor = buttonUpgrade.Enabled ? Color.LightGreen : Color.Gray;
             buttonPrestige.BackColor = buttonPrestige.Enabled ? Color.LightBlue : Color.Gray;
             buttonAscend.BackColor = buttonAscend.Enabled ? Color.MediumPurple : Color.Gray;
             buttonGenerator.BackColor = buttonGenerator.Enabled ? Color.LightGreen : Color.Gray;
         }
-
-        private void CooldownTimer_Tick(object sender, EventArgs e)
-        {
-            cooldownElapsed += cooldownTimer.Interval;
-
-            if (cooldownElapsed >= cooldownDuration)
-            {
-                cooldownTimer.Stop();
-                isCooldown = false;
-                button1.Enabled = true;
-                cooldownElapsed = 0;
-            }
-        }
-
         private void Button1_Click(object sender, EventArgs e)
         {
             if (isCooldown) return;
-
-            point += pointGain;
-
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble gain = pointGain * AscensionMultiplier / divisor;
+            point += gain;
             UpdateUI();
-
             isCooldown = true;
-            button1.Enabled = false;
             cooldownElapsed = 0;
+            cooldownTimer.Interval = 50; // Always 50ms for smooth updates
             cooldownTimer.Start();
+            labelCooldown.Text = $"Cooldown: {EffectiveCooldownDuration / 1000.0:F2}s";
+        }
+        private void CooldownTimer_Tick(object sender, EventArgs e)
+        {
+            cooldownElapsed += cooldownTimer.Interval;
+            int remaining = EffectiveCooldownDuration - cooldownElapsed;
+            if (remaining > 0)
+            {
+                labelCooldown.Text = $"Cooldown: {remaining / 1000.0:F2}s";
+            }
+            else
+            {
+                cooldownTimer.Stop();
+                isCooldown = false;
+                cooldownElapsed = 0;
+                labelCooldown.Text = ""; // Clear when ready
+            }
+        }
+        private void Button1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if (!isCooldown)
+                    Button1_Click(sender, e); // Immediate click
+
+                // Only allow hold if ascension count is 2 or more
+                if (ascendCount >= 2)
+                {
+                    holdTimer.Interval = EffectiveCooldownDuration;
+                    holdTimer.Start();
+                }
+            }
+        }
+        private void Button1_MouseUp(object sender, EventArgs e)
+        {
+            holdTimer.Stop();
         }
 
-
+        private void HoldTimer_Tick(object sender, EventArgs e)
+        {
+            if (!isCooldown)
+                Button1_Click(button1, EventArgs.Empty);
+            holdTimer.Interval = EffectiveCooldownDuration; // Update in case ascendCount changed
+        }
 
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {
@@ -195,8 +345,7 @@ namespace WinFormsApp1
             {
                 point -= cost;
                 upgradeCount++;
-                // Use log2 for prestigeCount to apply diminishing returns
-                double prestigeEffect = Math.Max(1, BigDouble.Log2(prestigeCount + 1));
+                double prestigeEffect = GetPrestigeEffect();
                 pointGain += 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
                 if (cooldownDuration == 1000)
                 {
@@ -209,63 +358,82 @@ namespace WinFormsApp1
         private void UpdateUpgradeInfoLabel()
         {
             BigDouble divisor = GetSoftCapDivisor(point);
-            double prestigeEffect = Math.Max(1, BigDouble.Log2(prestigeCount + 1));
+            double prestigeEffect = GetPrestigeEffect();
             BigDouble gain = 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
-            BigDouble prestigeGain = PrestigeIncrement / 100;
             labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
-            labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (diminishing returns)";
+            if (upgradesBought != null && upgradesBought.Length > 2 && upgradesBought[2])
+                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} ×1.25 (diminishing returns)";
+            else
+                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (diminishing returns)";
         }
+
         private void buttonPrestige_Click(object sender, EventArgs e)
         {
             var cost = GetPrestigeCost();
             if (point >= cost)
             {
-                point = 0;
+                point = BigDouble.Zero;
                 upgradeCount = 0;
-                pointGain = 1.0;
+                pointGain = BigDouble.One;
                 prestigeCount++;
                 UnlockGeneratorFeature();
                 UpdateUI();
             }
         }
+        private double GetPrestigeEffect()
+        {
+            double effect = BigDouble.Log2(prestigeCount + 1);
+            if (upgradesBought != null && upgradesBought.Length > 2 && upgradesBought[2])
+                effect *= 1.25; // Stronger prestiges
+            return effect;
+        }
         private void UpdateGeneratorInfo()
         {
             if (generatorCount == 0)
-            { return; }
-            BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointGain;
-            labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Points/second: {FormatNumbers(pps)}";
+                labelGeneratorInfo.Text = $"Generators: 0 | Cost: 100";
+            else
+            {
+                BigDouble divisor = GetSoftCapDivisor(point);
+                BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointGain / divisor;
+                labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Every generators 10x your current passive gain after the first";
+                labelPointsPerSecond.Text = $"Points/second: {FormatNumbers(pps)}";
+            }
         }
 
         private void buttonGenerator_Click(object sender, EventArgs e)
         {
-            if (point >= (BigDouble)generatorCost)
+            if (point >= generatorCost)
             {
-                point -= (BigDouble)generatorCost;
+                point -= generatorCost;
                 generatorCount++;
                 generatorCost = BigDouble.Pow(generatorCost, 2);
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
             }
         }
+
         private void GeneratorTimer_Tick(object sender, EventArgs e)
         {
             if (generatorCount > 0)
             {
-                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain;
-
+                labelPointsPerSecond.Visible = true;
+                BigDouble divisor = GetSoftCapDivisor(point);
+                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier / divisor;
                 point += passiveGain;
-
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
             }
+            else
+                labelPointsPerSecond.Visible = false;
         }
+
         private void buttonAscend_Click(object sender, EventArgs e)
         {
             var cost = GetAscendCost();
             if (point >= cost)
             {
-                point = 0;
-                pointGain = 1.0;
+                point = BigDouble.Zero;
+                pointGain = BigDouble.One;
                 upgradeCount = 0;
                 prestigeCount = 0;
                 ascendCount++;
@@ -274,22 +442,126 @@ namespace WinFormsApp1
                 UpdateUI();
             }
         }
-        private BigDouble GetUpgradeCost()
+
+        private BigDouble GetUpgradeCost() => baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
+        private BigDouble GetPrestigeCost() => basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
+        private BigDouble GetAscendCost() => baseAscendCost * BigDouble.Pow(ascendScale, ascendCount);
+
+        // Soft cap
+        private BigDouble GetSoftCapDivisor(BigDouble point)
         {
-            return baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
+            double divisor = 1.0;
+            if (upgradesBought != null && upgradesBought.Length > 1 && upgradesBought[1])
+                divisor /= 3.0; // Less punishing upgrade
+
+            if (point <= GetSoftCapThreshold())
+                return BigDouble.One * divisor;
+
+            double scale = BigDouble.Log10(point / GetSoftCapThreshold()) * 4;
+            return (BigDouble.One + scale) * divisor;
+        }
+        private BigDouble GetSoftCapThreshold()
+        {
+            if (upgradesBought != null && upgradesBought.Length > 3 && upgradesBought[3])
+                return new BigDouble(10000); // Lifted cap
+            return softcapThreshold;
+        }
+        private void UpdateSoftCapLabel()
+        {
+            BigDouble divisor = GetSoftCapDivisor(point);
+            if (point > GetSoftCapThreshold())
+            {
+                labelSoftCap.Visible = true;
+                labelSoftCap.Text = $"Current points is over {FormatNumbers(GetSoftCapThreshold())}, gain is divided by {FormatNumbers(divisor)}";
+            }
+            else
+            {
+                labelSoftCap.Visible = false;
+            }
         }
 
-        private BigDouble GetPrestigeCost()
+        private string FormatNumbers(BigDouble value)
         {
-            return basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
+            if (value >= BigDouble.Pow(10, 308))
+                return value.ToString("E1");
+
+            string[] suffixes = {
+                "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No",
+                "Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg",
+                "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg",
+                "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag",
+                "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig",
+                "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqig", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg",
+                "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg",
+                "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg",
+                "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog",
+                "Unog", "Dnog", "Tnog", "Qanog", "Qinog", "Sxnog", "Spnog", "Ocnog", "Nonog", "C"
+            };
+
+            int suffixIndex = 0;
+            while (value >= 1000 && suffixIndex < suffixes.Length - 1)
+            {
+                value /= 1000;
+                suffixIndex++;
+            }
+            return $"{value:F1}{suffixes[suffixIndex]}";
         }
 
-        private BigDouble GetAscendCost()
+        private void ApplyOfflineProgress(DateTime lastSaved)
         {
-            return baseAscendCost * BigDouble.Pow(ascendScale, ascendCount);
+            TimeSpan offlineTime = DateTime.Now - lastSaved;
+            BigDouble seconds = offlineTime.TotalSeconds;
+            if (generatorCount <= 0 || seconds <= 0)
+            {
+                if (prestigeCount == 0)
+                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
+                else
+                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress.");
+                return;
+            }
+
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount) * 0.01 * pointGain * offlineMultiplier / divisor;
+            BigDouble passiveGain = ratePerSecond * seconds;
+            point += passiveGain;
+
+            MessageBox.Show(
+                $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.\n" +
+                $"Current offline multi: x{offlineMultiplier}."
+            );
+
+            UpdateUI();
+            SaveGame();
         }
 
-        //offline progress
+        // Save on close
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            SaveGame();
+            MessageBox.Show("Your progress has been saved!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            base.OnFormClosing(e);
+        }
+
+#if DEBUG
+        private void buttonDebug_Click(object sender, EventArgs e)
+        {
+            pointGain *= 10;
+            button1.Text = $"+{pointGain:F1} points";
+            UpdateUI();
+        }
+#endif
+        private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
+        {
+            var shop = new AscensionShop(ascensionPoints, ascendCount, upgradesBought);
+            var result = shop.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                upgradesBought = shop.GetUpgradesBought();
+                ascensionPoints = shop.GetRemainingAscensionPoints();
+                SaveGame();
+                UpdateUI();
+            }
+        }
         private void SaveGame()
         {
             var state = new GameState
@@ -304,11 +576,11 @@ namespace WinFormsApp1
                 AscensionCount = ascendCount,
                 CooldownDuration = cooldownDuration,
                 LastSavedTime = DateTime.Now,
-
                 HasUnlockedPrestige = buttonPrestige.Visible,
                 HasUnlockedGenerators = buttonGenerator.Visible,
                 HasUnlockedAscension = buttonAscend.Visible,
                 HasAscended = buttonOpenAscensionShop.Visible,
+                PurchasedAscensionUpgrades = upgradesBought,
             };
 
             var settings = new JsonSerializerSettings();
@@ -318,6 +590,7 @@ namespace WinFormsApp1
             string json = JsonConvert.SerializeObject(state, settings);
             File.WriteAllText(savePath, json);
         }
+
         private void ApplyUnlocks(GameState state)
         {
             buttonPrestige.Visible = state.HasUnlockedPrestige;
@@ -332,22 +605,23 @@ namespace WinFormsApp1
             buttonAscend.Visible = state.HasUnlockedAscension;
             labelAscendCost.Visible = state.HasUnlockedAscension;
 
-            buttonOpenAscensionShop.Visible = state.HasAscended;
+            buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = state.HasAscended;
         }
+
         private void LoadGame()
         {
             try
             {
                 if (!File.Exists(savePath))
                 {
-                    SaveGame(); // Create a fresh save file
+                    SaveGame();
                     return;
                 }
 
                 string json = File.ReadAllText(savePath);
                 if (string.IsNullOrWhiteSpace(json))
                 {
-                    SaveGame(); // Handle empty file
+                    SaveGame();
                     return;
                 }
 
@@ -367,6 +641,10 @@ namespace WinFormsApp1
                 ascendCount = state.AscensionCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
+                if (state.PurchasedAscensionUpgrades != null && state.PurchasedAscensionUpgrades.Length == 4)
+                    upgradesBought = state.PurchasedAscensionUpgrades;
+                else
+                    upgradesBought = new bool[4];
 
                 if (cooldownDuration == 500)
                 {
@@ -387,9 +665,8 @@ namespace WinFormsApp1
                     MessageBoxIcon.Warning
                 );
 
-                // Reset to defaults and create a fresh save
                 point = BigDouble.Zero;
-                pointGain = new BigDouble(1);
+                pointGain = BigDouble.One;
                 generatorCost = new BigDouble(100);
                 generatorCount = 0;
                 ascensionPoints = BigDouble.Zero;
@@ -404,10 +681,9 @@ namespace WinFormsApp1
             buttonPrestige.Visible = true;
             labelPrestigeCost.Visible = true;
             labelUpgradeNote.Visible = false;
-
-            // Immediately persist
             SaveGame();
         }
+
         private void UnlockGeneratorFeature()
         {
             buttonGenerator.Visible = true;
@@ -421,154 +697,10 @@ namespace WinFormsApp1
 
         private void UnlockAscensionFeature()
         {
-            buttonOpenAscensionShop.Visible = true;
+            buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = true;
             SaveGame();
         }
-        //soft cap
-        private BigDouble GetSoftCapDivisor(BigDouble point)
-        {
-            // No cap below 1 000
-            if (point <= 1_000)
-                return BigDouble.One;
 
-            // “Decades” above 10^3: e.g. point=2e6 → logDec≈3.3010; 
-            // at 1e4→1.0, 1e5→2.0, etc.
-            double logDec = (double)(BigDouble.Log10(point) - 3.0);
-
-            // Compute Gamma(logDec + 1) for a smooth factorial
-            double gammaValue = LanczosGamma(logDec + 1.0);
-
-            // Convert back to BigDouble
-            return new BigDouble(gammaValue + 1.0);
-        }
-
-        // Lanczos approximation for Gamma(z)
-        private static double LanczosGamma(double z)
-        {
-            // Coefficients for g=7, n=9 (Robust for z > 0)
-            double[] p = {
-         0.99999999999980993,
-        676.5203681218851,
-       -1259.1392167224028,
-        771.32342877765313,
-       -176.61502916214059,
-         12.507343278686905,
-         -0.13857109526572012,
-          9.9843695780195716e-6,
-          1.5056327351493116e-7
-    };
-
-            if (z < 0.5)
-            {
-                // Reflection for z < 0.5
-                return Math.PI / (Math.Sin(Math.PI * z) * LanczosGamma(1.0 - z));
-            }
-
-            z -= 1.0;
-            double x = p[0];
-            for (int i = 1; i < p.Length; i++)
-                x += p[i] / (z + i);
-
-            double t = z + p.Length - 0.5;
-            return Math.Sqrt(2 * Math.PI) * Math.Pow(t, z + 0.5) * Math.Exp(-t) * x;
-        }
-        private void UpdateSoftCapLabel()
-        {
-            BigDouble divisor = GetSoftCapDivisor(point);
-            labelSoftCap.Text = $"Soft Cap: {FormatNumbers(divisor)}";
-        }
-        private string FormatNumbers(BigDouble value)
-        {
-            // Use scientific notation only for extremely large values (>= 1e308)
-            if (value >= BigDouble.Pow(10, 308))
-                return value.ToString("E1");
-
-            // Custom suffixes for readable formatting
-            string[] suffixes = {
-    "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", // 10^3 to 10^33
-    "Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg", // 10^36 to 10^63
-    "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg", // 10^66 to 10^93
-    "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag", // 10^96 to 10^123
-    "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig", // 10^126 to 10^153
-    "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqig", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg", // 10^156 to 10^183
-    "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg", // 10^186 to 10^213
-    "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg", // 10^216 to 10^243
-    "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog", // 10^246 to 10^273
-    "Unog", "Dnog", "Tnog", "Qanog", "Qinog", "Sxnog", "Spnog", "Ocnog", "Nonog", "C" // 10^276 to 10^303
-};
-
-            int suffixIndex = 0;
-
-            while (value >= 1000 && suffixIndex < suffixes.Length - 1)
-            {
-                value /= 1000;
-                suffixIndex++;
-            }
-
-            return $"{value:F1}{suffixes[suffixIndex]}";
-        }
-
-
-        private void ApplyOfflineProgress(DateTime lastSaved)
-        {
-            // Calculate how long the player was away
-            TimeSpan offlineTime = DateTime.Now - lastSaved;
-            BigDouble seconds = offlineTime.TotalSeconds;
-            if (generatorCount <= 0 || seconds <= 0)
-            {
-                if (prestigeCount==0)
-                MessageBox.Show(
-              $"Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
-                else
-                    MessageBox.Show(
-                  $"Welcome back! You currently don't own any generator for offline progress.");
-                return;
-            };
-
-            // Apply the soft cap divisor as of the starting point
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount)
-                                      * 0.01
-                                      * pointGain
-                                      * offlineMultiplier
-                                      / divisor;
-
-            BigDouble passiveGain = ratePerSecond * seconds;
-            point += passiveGain;
-
-            MessageBox.Show(
-              $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.\n" +
-              $"Current offline multi: x{offlineMultiplier}."
-            );
-
-            UpdateUI();    // Refresh labels/buttons to reflect the new point total
-            SaveGame();    // Persist the updated state immediately
-        }
-
-        //saves on close
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            SaveGame();
-            MessageBox.Show("Your progress has been saved!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            base.OnFormClosing(e);
-        }
-
-#if DEBUG
-        private void buttonDebug_Click(object sender, EventArgs e)
-        {
-            pointGain *= 10;
-            button1.Text = $"+{((BigDouble)pointGain).ToString("F1")} points";
-            UpdateUI();
-        }
-#endif
-
-        private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
-        {
-            // Pass current ascension points to the shop
-            AscensionShop shop = new AscensionShop(ascensionPoints);
-            shop.ShowDialog(); // Opens the shop as a modal window
-        }
         private void LogCrash(Exception ex)
         {
             string crashLogPath = Path.Combine(
@@ -578,9 +710,105 @@ namespace WinFormsApp1
             );
 
             Directory.CreateDirectory(Path.GetDirectoryName(crashLogPath));
-
             string log = $"[{DateTime.Now}] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n\n";
             File.AppendAllText(crashLogPath, log);
+        }
+        private void TranscendFlashTimer_Tick(object sender, EventArgs e)
+        {
+            Color[] colors = { Color.Lime, Color.Cyan, Color.Yellow, Color.Magenta, Color.Orange, Color.Red };
+            buttonTranscend.BackColor = colors[transcendFlashStep % colors.Length];
+            transcendFlashStep++;
+        }
+        private void buttonTranscend_Click(object sender, EventArgs e)
+        {
+            if (point >= transcendCost)
+            {
+                point -= transcendCost;
+                transcendFlashTimer.Stop();
+                buttonTranscend.BackColor = Color.DarkViolet;
+                // Show the transcend window
+                var window = new TranscendWindow();
+                window.ShowDialog();
+                UpdateUI();
+            }
+        }
+        // Empty event handlers (if not used, consider removing from designer)
+        private void labelGeneratorInfo_Click(object sender, EventArgs e) { }
+        private void labelPrestigeCost_Click(object sender, EventArgs e) { }
+
+        private void labelPointsPerSecond_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelSoftCap_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private bool dragging = false;
+        private Point dragCursorPoint;
+        private Point dragFormPoint;
+
+        private void panelTitleBar_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                dragging = true;
+                dragCursorPoint = Cursor.Position;
+                dragFormPoint = this.Location;
+            }
+        }
+
+        private void panelTitleBar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (dragging)
+            {
+                Point diff = Point.Subtract(Cursor.Position, new Size(dragCursorPoint));
+                this.Location = Point.Add(dragFormPoint, new Size(diff));
+            }
+        }
+
+        private void panelTitleBar_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                dragging = false;
+            }
+        }
+
+        private void labelPoint_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelPointGain_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelUpgradeNote_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelPrestigeInfo_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private double AscensionMultiplier => Math.Pow(1.1, ascendCount);
+
+        private int EffectiveCooldownDuration
+        {
+            get
+            {
+                int reductions = ascendCount / 2;
+                double reductionPercent = reductions * 0.05;
+                double effective = cooldownDuration * (1.0 - reductionPercent);
+                // Minimum cooldown (optional, to prevent zero/negative)
+                return Math.Max((int)effective, 50);
+            }
         }
     }
 }
