@@ -1,34 +1,86 @@
 ﻿using BreakInfinity;
 using System.Drawing;
 using System.Windows.Forms;
-using WinFormsApp1.Properties;
+
 namespace WinFormsApp1
 {
     public partial class AscensionShop : Form
     {
-        private BigDouble ascensionPoints;
-        private bool[] upgradesBought = new bool[4];
-        private int selectedUpgrade = -1;
-        private BigDouble[] upgradeCosts = { 1, 1, 2, 3, }; // Testing costs
-        public BigDouble GetRemainingAscensionPoints() => ascensionPoints;
-        public bool[] GetUpgradesBought() => (bool[])upgradesBought.Clone();
+        private bool[] challengesCompleted;
 
-        // Main constructor: all initialization logic goes here
-        public AscensionShop(BigDouble points, int ascensionCount = 0)
+        // Main constructor: always called
+        private bool challengeActive = false;
+
+        // Add this method to handle all icon clicks:
+        private void PictureBoxChallengeIcon_Click(int challengeIndex)
         {
-            ascensionPoints = points;
-            InitializeComponent();
-            // Load resources
-            icon1.Image = Properties.Resources.icon1;
-            icon2.Image = Properties.Resources.icon2;
-            icon3.Image = Properties.Resources.icon3;
-            icon4.Image = Properties.Resources.icon4;
-            upgradePanel1.Controls.Add(icon1);
-            upgradePanel2.Controls.Add(icon2);
-            upgradePanel3.Controls.Add(icon3);
-            upgradePanel4.Controls.Add(icon4);
-            labelEffect.Text = GetUpgradeEffectText(-1);
+            string challengeName = "";
+            string challengeDesc = "";
+            string challengeReward = "";
 
+            switch (challengeIndex)
+            {
+                case 0:
+                    challengeName = "Simple nerf simple buff";
+                    challengeDesc = "Point gain is divided by 10";
+                    challengeReward = "Challenge Reward:\nPoint gain x1.5";
+                    break;
+                case 1:
+                    challengeName = "Prestiging is for newbies";
+                    challengeDesc = "Prestige effectiveness halved";
+                    challengeReward = "Challenge Reward:\nPrestige multi x1.1";
+                    break;
+                case 2:
+                    challengeName = "Have some patience";
+                    challengeDesc = "Click cooldown and generator tick speed increased to 10 seconds";
+                    challengeReward = "Challenge Reward:\nClick cooldown and\ngenerator tick -0.1s";
+                    break;
+                case 3:
+                    challengeName = "Final challenge";
+                    challengeDesc = "Challenges 1-3 all at once!";
+                    challengeReward = "Challenge Reward:\nSoft cap threshold 10k";
+                    break;
+                default:
+                    challengeName = "Unknown challenge";
+                    challengeDesc = "";
+                    challengeReward = "";
+                    break;
+            }
+
+            richTextBoxChallengeInfo.Clear();
+            richTextBoxChallengeInfo.SelectionFont = new Font(richTextBoxChallengeInfo.Font, FontStyle.Bold);
+            richTextBoxChallengeInfo.AppendText(challengeName + "\n\n");
+            richTextBoxChallengeInfo.SelectionFont = new Font(richTextBoxChallengeInfo.Font, FontStyle.Regular);
+            richTextBoxChallengeInfo.AppendText(challengeDesc);
+
+            richTextBoxChallengeInfo.Visible = true;
+            labelChallengeReward.Text = challengeReward;
+            labelChallengeReward.Visible = !string.IsNullOrEmpty(challengeReward);
+            buttonChallengeAction.Text = challengeActive ? "Cancel" : "Start";
+            buttonChallengeAction.Visible = true;
+        }
+        private void buttonChallengeAction_Click(object sender, EventArgs e)
+        {
+            challengeActive = !challengeActive;
+            buttonChallengeAction.Text = challengeActive ? "Cancel" : "Start";
+            richTextBoxChallengeInfo.Text = challengeActive
+                ? "Challenge is now active! (placeholder)"
+                : "This is a placeholder for challenge details.";
+        }
+        public AscensionShop(int ascensionCount, bool[] challengesCompleted)
+        {
+            InitializeComponent();
+            this.challengesCompleted = (bool[])challengesCompleted.Clone();
+            InitializeWindow(ascensionCount);
+
+            // Ensure close button is placed correctly after layout
+            this.Shown += (s, e) =>
+            {
+                buttonClose.Location = new Point(panelTitleBar.Width - buttonClose.Width, 0);
+            };
+        }
+        private void InitializeWindow(int ascensionCount)
+        {
             // Set dynamic text for boosts
             labelBoosts.Text = $"Ascension Count Boosts:\n" +
                 $"You have {ascensionCount} ascensions.\n\n";
@@ -54,12 +106,7 @@ namespace WinFormsApp1
                 labelBoosts.Text += $"2. [Locked] Button cooldown reduction & hold: Unlocks at 2 ascensions\n";
             }
 
-            labelPoints.Text = $"Ascension Points: {ascensionPoints}";
-
-            // Event handlers
-            buttonMinimize.MouseEnter += (s, e) => buttonMinimize.BackColor = Color.FromArgb(64, 96, 160);
-            buttonMinimize.MouseLeave += (s, e) => buttonMinimize.BackColor = Color.FromArgb(32, 64, 128);
-            buttonMinimize.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
+            // Event handlers for window controls
 
             buttonClose.MouseEnter += (s, e) => buttonClose.BackColor = Color.FromArgb(96, 32, 32);
             buttonClose.MouseLeave += (s, e) => buttonClose.BackColor = Color.FromArgb(32, 64, 128);
@@ -71,31 +118,15 @@ namespace WinFormsApp1
 
             panelTitleBar.Resize += (s, e) =>
             {
-                buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
                 buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
             };
-
-            // Wire up click events
-            upgradePanel1.Click += (s, e) => ShowUpgradeDetails(0);
-            upgradePanel2.Click += (s, e) => ShowUpgradeDetails(1);
-            upgradePanel3.Click += (s, e) => ShowUpgradeDetails(2);
-            upgradePanel4.Click += (s, e) => ShowUpgradeDetails(3);
-            buttonBuy.Click += (s, e) => BuySelectedUpgrade();
-            icon1.Click += (s, e) => ShowUpgradeDetails(0);
-            icon2.Click += (s, e) => ShowUpgradeDetails(1);
-            icon3.Click += (s, e) => ShowUpgradeDetails(2);
-            icon4.Click += (s, e) => ShowUpgradeDetails(3);
-            UpdateUpgradePanels();
         }
 
-        // Overload for loading upgrades
-        public AscensionShop(BigDouble points, int ascensionCount, bool[] loadedUpgrades)
-            : this(points, ascensionCount)
+        public bool[] GetChallengesCompleted()
         {
-            if (loadedUpgrades != null && loadedUpgrades.Length == 4)
-                upgradesBought = (bool[])loadedUpgrades.Clone();
-            UpdateUpgradePanels();
+            return (bool[])challengesCompleted.Clone();
         }
+
         // --- Dragging logic (same as MainForm) ---
         private bool dragging = false;
         private Point dragCursorPoint;
@@ -126,66 +157,6 @@ namespace WinFormsApp1
             {
                 dragging = false;
             }
-        }
-
-        private void ShowUpgradeDetails(int index)
-        {
-            selectedUpgrade = index;
-            detailsPanel.Visible = true;
-            labelEffect.Text = GetUpgradeEffectText(index);
-            labelCost.Text = $"Cost: {upgradeCosts[index]} Ascension Points";
-            buttonBuy.Enabled = !upgradesBought[index] && ascensionPoints >= upgradeCosts[index];
-            buttonBuy.BackColor = upgradesBought[index] ? Color.LightGreen : SystemColors.Control;
-            buttonBuy.Text = upgradesBought[index] ? "Bought" : "Buy";
-
-            // Set all panels to default, then set bought ones to green
-            upgradePanel1.BackColor = upgradesBought[0] ? Color.LightGreen : Color.Gray;
-            upgradePanel2.BackColor = upgradesBought[1] ? Color.LightGreen : Color.Gray;
-            upgradePanel3.BackColor = upgradesBought[2] ? Color.LightGreen : Color.Gray;
-            upgradePanel4.BackColor = upgradesBought[3] ? Color.LightGreen : Color.Gray;
-        }
-        private void BuySelectedUpgrade()
-        {
-            if (selectedUpgrade < 0 || upgradesBought[selectedUpgrade]) return;
-            if (ascensionPoints < upgradeCosts[selectedUpgrade]) return;
-
-            ascensionPoints -= upgradeCosts[selectedUpgrade];
-            upgradesBought[selectedUpgrade] = true;
-            labelPoints.Text = $"Ascension Points: {ascensionPoints}";
-            buttonBuy.BackColor = Color.LightGreen;
-            buttonBuy.Text = "Bought";
-            buttonBuy.Enabled = false;
-
-            // Set the icon's panel to green
-            switch (selectedUpgrade)
-            {
-                case 0: upgradePanel1.BackColor = Color.LightGreen; break;
-                case 1: upgradePanel2.BackColor = Color.LightGreen; break;
-                case 2: upgradePanel3.BackColor = Color.LightGreen; break;
-                case 3: upgradePanel4.BackColor = Color.LightGreen; break;
-            }
-            // Optionally: apply the upgrade effect here
-
-            // Optionally set DialogResult if you want to close after buying
-            // this.DialogResult = DialogResult.OK;
-        }
-        private string GetUpgradeEffectText(int index)
-        {
-            switch (index)
-            {
-                case 0: return "Ascended upgrades\nGain 5 free upgrades on ascension.";
-                case 1: return "Less punishing\nSoft cap is divided by 3.";
-                case 2: return "Stronger prestiges\nPrestige effect is increased by 25%.";
-                case 3: return "Lifted cap\nSoft cap threshold is increased to 10k points.";
-                default: return "Choose an upgrade...";
-            }
-        }
-        private void UpdateUpgradePanels()
-        {
-            upgradePanel1.BackColor = upgradesBought[0] ? Color.LightGreen : Color.Gray;
-            upgradePanel2.BackColor = upgradesBought[1] ? Color.LightGreen : Color.Gray;
-            upgradePanel3.BackColor = upgradesBought[2] ? Color.LightGreen : Color.Gray;
-            upgradePanel4.BackColor = upgradesBought[3] ? Color.LightGreen : Color.Gray;
         }
     }
 }

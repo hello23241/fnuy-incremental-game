@@ -32,8 +32,8 @@ namespace WinFormsApp1
         private int prestigeCount = 0;
         private int ascendCount = 0;
         private int generatorCount = 0;
-        private bool[] upgradesBought = new bool[4];
-        private int PermanentUpgradeBonus => upgradesBought != null && upgradesBought.Length > 1 && upgradesBought[0] ? 5 : 0;
+        private bool[] challengesCompleted = new bool[4];
+        private int PermanentUpgradeBonus => challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0] ? 5 : 0;
         private int EffectiveUpgradeCount => upgradeCount + PermanentUpgradeBonus;
 
         // Timers and cooldowns
@@ -58,6 +58,11 @@ namespace WinFormsApp1
         public MainForm()
         {
             InitializeComponent();
+#if DEBUG
+        buttonDebug.Visible = true;
+#else
+        buttonDebug.Visible = false;
+#endif
             this.Text = "Myrtle incremental";
             this.Icon = Properties.Resources.NianBean;
 
@@ -229,6 +234,8 @@ namespace WinFormsApp1
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
+            RecalculatePointGain();
+            UpdateGeneratorTimerInterval();
 
             BigDouble gain = pointGain / GetSoftCapDivisor(point);
             labelPoint.Text = $"Points: {FormatNumbers(point)}";
@@ -242,7 +249,7 @@ namespace WinFormsApp1
             if (upgradeCount != 0)
             {
                 if (PermanentUpgradeBonus > 0)
-                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount} (+{PermanentUpgradeBonus} permanent)";
+                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount} (+{PermanentUpgradeBonus} free)";
                 else
                     labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
                 labelUpgradeNote.Visible = true;
@@ -280,6 +287,13 @@ namespace WinFormsApp1
             buttonPrestige.BackColor = buttonPrestige.Enabled ? Color.LightBlue : Color.Gray;
             buttonAscend.BackColor = buttonAscend.Enabled ? Color.MediumPurple : Color.Gray;
             buttonGenerator.BackColor = buttonGenerator.Enabled ? Color.LightGreen : Color.Gray;
+        }
+        private void UpdateGeneratorTimerInterval()
+        {
+            int interval = 1000;
+            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+                interval -= 100; // 0.1s faster
+            generatorTimer.Interval = Math.Max(interval, 100);
         }
         private void Button1_Click(object sender, EventArgs e)
         {
@@ -336,33 +350,42 @@ namespace WinFormsApp1
                 Button1_Click(button1, EventArgs.Empty);
             holdTimer.Interval = EffectiveCooldownDuration; // Update in case ascendCount changed
         }
-
+        private void RecalculatePointGain()
+        {
+            double prestigeEffect = GetPrestigeEffect();
+            BigDouble divisor = GetSoftCapDivisor(point);
+            double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 1.5 : 1.0;
+            pointGain = (BigDouble.One + EffectiveUpgradeCount * (1 + prestigeEffect * GetPrestigeIncrement() / 100 / divisor)) * challenge0Multi;
+        }
+        private BigDouble GetPrestigeIncrement()
+        {
+            double multiplier = (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1]) ? 1.1 : 1.0;
+            return PrestigeIncrement * multiplier;
+        }
         private void buttonUpgrade_Click(object sender, EventArgs e)
         {
             var cost = GetUpgradeCost();
-            BigDouble divisor = GetSoftCapDivisor(point);
             if (point >= cost)
             {
                 point -= cost;
                 upgradeCount++;
-                double prestigeEffect = GetPrestigeEffect();
-                pointGain += 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
                 if (cooldownDuration == 1000)
                 {
                     UnlockPrestigeFeature();
                     cooldownDuration = 500;
                 }
+                RecalculatePointGain();
                 UpdateUI();
             }
         }
         private void UpdateUpgradeInfoLabel()
         {
-            BigDouble divisor = GetSoftCapDivisor(point);
             double prestigeEffect = GetPrestigeEffect();
-            BigDouble gain = 1 + pointGain * prestigeEffect * PrestigeIncrement / 100 / divisor;
-            labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gain)} to your click multiplier";
-            if (upgradesBought != null && upgradesBought.Length > 2 && upgradesBought[2])
-                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} ×1.25 (diminishing returns)";
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble gainPerUpgrade = 1 + prestigeEffect * GetPrestigeIncrement() / 100 / divisor;
+            labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
+            if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
+                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (multiplied by 1.1) (diminishing returns)";
             else
                 labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (diminishing returns)";
         }
@@ -383,8 +406,8 @@ namespace WinFormsApp1
         private double GetPrestigeEffect()
         {
             double effect = BigDouble.Log2(prestigeCount + 1);
-            if (upgradesBought != null && upgradesBought.Length > 2 && upgradesBought[2])
-                effect *= 1.25; // Stronger prestiges
+            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+                effect *= 1.2; // Stronger prestiges challenge
             return effect;
         }
         private void UpdateGeneratorInfo()
@@ -451,19 +474,19 @@ namespace WinFormsApp1
         private BigDouble GetSoftCapDivisor(BigDouble point)
         {
             double divisor = 1.0;
-            if (upgradesBought != null && upgradesBought.Length > 1 && upgradesBought[1])
-                divisor /= 3.0; // Less punishing upgrade
+            if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
+                divisor /= 1.1; // Less punishing challenge
 
             if (point <= GetSoftCapThreshold())
                 return BigDouble.One * divisor;
 
-            double scale = BigDouble.Log10(point / GetSoftCapThreshold()) * 4;
+            double scale = BigDouble.Log10(point / GetSoftCapThreshold()) * 10;
             return (BigDouble.One + scale) * divisor;
         }
         private BigDouble GetSoftCapThreshold()
         {
-            if (upgradesBought != null && upgradesBought.Length > 3 && upgradesBought[3])
-                return new BigDouble(10000); // Lifted cap
+            if (challengesCompleted != null && challengesCompleted.Length > 3 && challengesCompleted[3])
+                return new BigDouble(10000); // Challenge 3: lifted cap
             return softcapThreshold;
         }
         private void UpdateSoftCapLabel()
@@ -552,12 +575,13 @@ namespace WinFormsApp1
 #endif
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
-            var shop = new AscensionShop(ascensionPoints, ascendCount, upgradesBought);
-            var result = shop.ShowDialog();
+            // Pass in the current challenge completion state and ascension count
+            var challengeWindow = new AscensionShop(ascendCount, challengesCompleted);
+            var result = challengeWindow.ShowDialog();
             if (result == DialogResult.OK)
             {
-                upgradesBought = shop.GetUpgradesBought();
-                ascensionPoints = shop.GetRemainingAscensionPoints();
+                // Update challenge completion state from the window
+                challengesCompleted = challengeWindow.GetChallengesCompleted();
                 SaveGame();
                 UpdateUI();
             }
@@ -580,7 +604,7 @@ namespace WinFormsApp1
                 HasUnlockedGenerators = buttonGenerator.Visible,
                 HasUnlockedAscension = buttonAscend.Visible,
                 HasAscended = buttonOpenAscensionShop.Visible,
-                PurchasedAscensionUpgrades = upgradesBought,
+                AscChallenges = challengesCompleted,
             };
 
             var settings = new JsonSerializerSettings();
@@ -641,10 +665,10 @@ namespace WinFormsApp1
                 ascendCount = state.AscensionCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
-                if (state.PurchasedAscensionUpgrades != null && state.PurchasedAscensionUpgrades.Length == 4)
-                    upgradesBought = state.PurchasedAscensionUpgrades;
+                if (state.AscChallenges != null && state.AscChallenges.Length == 4)
+                    challengesCompleted = state.AscChallenges;
                 else
-                    upgradesBought = new bool[4];
+                    challengesCompleted = new bool[4];
 
                 if (cooldownDuration == 500)
                 {
@@ -806,7 +830,11 @@ namespace WinFormsApp1
                 int reductions = ascendCount / 2;
                 double reductionPercent = reductions * 0.05;
                 double effective = cooldownDuration * (1.0 - reductionPercent);
-                // Minimum cooldown (optional, to prevent zero/negative)
+
+                // Challenge 2: decrease by 0.1s (100ms)
+                if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+                    effective -= 100;
+
                 return Math.Max((int)effective, 50);
             }
         }
