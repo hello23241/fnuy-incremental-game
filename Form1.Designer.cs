@@ -49,6 +49,7 @@
             buttonTranscend = new Button();
             labelTranscendCost = new Label();
             labelCooldown = new Label();
+            buttonDebug = new Button();
             SuspendLayout();
             // 
             // button1
@@ -270,7 +271,16 @@
             labelCooldown.Name = "labelCooldown";
             labelCooldown.Size = new Size(120, 20);
             labelCooldown.TabIndex = 0;
-            labelCooldown.Text = "";
+            // 
+            // buttonDebug
+            // 
+            buttonDebug.Location = new Point(916, 517);
+            buttonDebug.Name = "buttonDebug";
+            buttonDebug.Size = new Size(120, 30);
+            buttonDebug.TabIndex = 200;
+            buttonDebug.Text = "Debug";
+            buttonDebug.UseVisualStyleBackColor = true;
+            buttonDebug.Click += buttonDebug_Click;
             // 
             // MainForm
             // 
@@ -299,6 +309,7 @@
             Controls.Add(labelAscendCost);
             Controls.Add(buttonOpenAscensionShop);
             Controls.Add(labelPointsPerSecond);
+            Controls.Add(buttonDebug);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             Name = "MainForm";
