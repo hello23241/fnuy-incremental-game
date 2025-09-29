@@ -23,5 +23,10 @@ namespace WinFormsApp1
         public bool HasUnlockedAscension;
         public bool HasAscended;
         public bool[] AscChallenges = new bool[4];
+        public BigDouble Milk { get; set; }
+        public DateTime LastMilkClaimDate { get; set; }
+        public int MilkStreak { get; set; }
+        public int[] MilkSpent { get; set; } = new int[3];
+        public int BaseMilkUpgradeCount { get; set; }
     }
 }

@@ -271,6 +271,18 @@
             labelCooldown.Name = "labelCooldown";
             labelCooldown.Size = new Size(120, 20);
             labelCooldown.TabIndex = 0;
+            //
+            // buttonPremiumShop
+            //
+            buttonPremiumShop = new Button();
+            buttonPremiumShop.Location = new Point(labelPointsPerSecond.Right + 10, labelPointsPerSecond.Top);
+            buttonPremiumShop.Name = "buttonPremiumShop";
+            buttonPremiumShop.Size = new Size(120, 30);
+            buttonPremiumShop.TabIndex = 201;
+            buttonPremiumShop.Text = $"🥛 {milk}";
+            buttonPremiumShop.UseVisualStyleBackColor = true;
+            buttonPremiumShop.Click += buttonPremiumShop_Click;
+            Controls.Add(buttonPremiumShop);
             // 
             // buttonDebug
             // 
@@ -280,7 +292,7 @@
             buttonDebug.TabIndex = 200;
             buttonDebug.Text = "Debug";
             buttonDebug.UseVisualStyleBackColor = true;
-            buttonDebug.Click += buttonDebug_Click;
+            //buttonDebug.Click += buttonDebug_Click;
             // 
             // MainForm
             // 
@@ -340,9 +352,7 @@
         private System.Windows.Forms.Button buttonTranscend;
         private System.Windows.Forms.Label labelTranscendCost;
         private System.Windows.Forms.Label labelCooldown;
-#if DEBUG
+        private System.Windows.Forms.Button buttonPremiumShop;
         private System.Windows.Forms.Button buttonDebug;
-#endif
-
     }
 }

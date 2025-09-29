@@ -4,16 +4,16 @@ using System.Windows.Forms;
 
 namespace WinFormsApp1
 {
-    public partial class AscensionShop : Form
+    public partial class AscensionWindow : Form
     {
         private bool[] challengesCompleted;
 
         // Main constructor: always called
         private bool challengeActive = false;
-
         // Add this method to handle all icon clicks:
         private void PictureBoxChallengeIcon_Click(int challengeIndex)
         {
+            currentChallengeIndex = challengeIndex;
             string challengeName = "";
             string challengeDesc = "";
             string challengeReward = "";
@@ -65,9 +65,19 @@ namespace WinFormsApp1
             buttonChallengeAction.Text = challengeActive ? "Cancel" : "Start";
             richTextBoxChallengeInfo.Text = challengeActive
                 ? "Challenge is now active! (placeholder)"
-                : "This is a placeholder for challenge details.";
+                : "Choose a challenge...";
+
+            if (challengeActive)
+            {
+                ActiveChallengeIndex = currentChallengeIndex;
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
         }
-        public AscensionShop(int ascensionCount, bool[] challengesCompleted)
+        public bool ChallengeActive => challengeActive;
+        public int ActiveChallengeIndex { get; private set; } = -1;
+        private int currentChallengeIndex = -1;
+        public AscensionWindow(int ascensionCount, bool[] challengesCompleted)
         {
             InitializeComponent();
             this.challengesCompleted = (bool[])challengesCompleted.Clone();
