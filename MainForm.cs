@@ -14,11 +14,16 @@ namespace WinFormsApp1
         private BigDouble PrestigeIncrement = new BigDouble(4);
         private BigDouble generatorCost = new BigDouble(100);
         private BigDouble ascensionPoints = BigDouble.Zero;
-        private readonly BigDouble softcapThreshold = new BigDouble(1000);
+        private readonly BigDouble softcapThreshold = new BigDouble(100_000);
         private System.Windows.Forms.Timer transcendFlashTimer;
         private int transcendFlashStep = 0;
         private readonly BigDouble transcendCost = new BigDouble(1_000_000_000);
-
+        // Premium currency
+        private BigDouble milk = BigDouble.Zero;
+        private DateTime lastMilkClaimDate = DateTime.MinValue;
+        private int baseMilkUpgradeCount = 0;
+        private int milkStreak = 0;
+        private int[] milkSpent = new int[3];
         // Base costs and scaling factors
         private readonly BigDouble baseUpgradeCost = new BigDouble(10);
         private readonly double upgradeScale = 1.05;
@@ -26,7 +31,6 @@ namespace WinFormsApp1
         private readonly double prestigeScale = 3;
         private readonly BigDouble baseAscendCost = new BigDouble(1_000_000);
         private readonly double ascendScale = 2.5;
-
         // Purchase counts (persist these, not the cost)
         private int upgradeCount = 0;
         private int prestigeCount = 0;
@@ -54,7 +58,8 @@ namespace WinFormsApp1
         private Button buttonMinimize;
         private Button buttonClose;
         private Label labelTitle;
-
+        private int activeChallengeIndex = -1; // -1 means no challenge active
+        //debug
         public MainForm()
         {
             InitializeComponent();
@@ -157,7 +162,7 @@ namespace WinFormsApp1
             buttonPrestige.Visible = labelPrestigeCost.Visible = labelPrestigeInfo.Visible = false;
             buttonGenerator.Visible = labelGeneratorInfo.Visible = labelSoftCap.Visible = false;
             buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
-            buttonTranscend.Visible = labelTranscendCost.Visible = false;
+            buttonTranscend.Visible = labelTranscendCost.Visible = buttonPremiumShop.Visible = false;
 
 #if DEBUG
             buttonDebug.Visible = true;
@@ -245,6 +250,7 @@ namespace WinFormsApp1
             labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(GetAscendCost())}";
             labelPointGain.Text = $"Point Gain: {FormatNumbers(pointGain)}";
             labelTranscendCost.Text = $"Transcend Cost: {FormatNumbers(transcendCost)}";
+            buttonPremiumShop.Text = $"🥛 {FormatNumbers(milk)}";
 
             if (upgradeCount != 0)
             {
@@ -293,6 +299,11 @@ namespace WinFormsApp1
             int interval = 1000;
             if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
                 interval -= 100; // 0.1s faster
+
+            // Challenge 2: increase to 10 seconds
+            if (activeChallengeIndex == 2 || activeChallengeIndex == 3)
+                interval = 10000;
+
             generatorTimer.Interval = Math.Max(interval, 100);
         }
         private void Button1_Click(object sender, EventArgs e)
@@ -355,7 +366,15 @@ namespace WinFormsApp1
             double prestigeEffect = GetPrestigeEffect();
             BigDouble divisor = GetSoftCapDivisor(point);
             double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 1.5 : 1.0;
-            pointGain = (BigDouble.One + EffectiveUpgradeCount * (1 + prestigeEffect * GetPrestigeIncrement() / 100 / divisor)) * challenge0Multi;
+
+            // Challenge 0: Point gain is divided by 10
+            double challengeDebuff = 1.0;
+            if (activeChallengeIndex == 0 || activeChallengeIndex == 3)
+                challengeDebuff /= 10.0;
+
+            pointGain = (BigDouble.One + EffectiveUpgradeCount * (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor))
+                * challenge0Multi * challengeDebuff *
+                (1 + milkSpent[0] * 0.01);
         }
         private BigDouble GetPrestigeIncrement()
         {
@@ -382,12 +401,24 @@ namespace WinFormsApp1
         {
             double prestigeEffect = GetPrestigeEffect();
             BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gainPerUpgrade = 1 + prestigeEffect * GetPrestigeIncrement() / 100 / divisor;
+            BigDouble gainPerUpgrade = 1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor;
+
             labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
+
+            // Show correct log base in prestige info
+            double logBase = 2.0;
+            string baseText = "₂";
+            string extraText = "";
             if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
-                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (multiplied by 1.1) (diminishing returns)";
-            else
-                labelPrestigeInfo.Text = $"Prestige effect: log₂({prestigeCount + 1}) = {prestigeEffect:F2} (diminishing returns)";
+                extraText = " (multiplied by 1.1)";
+            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+            {
+                logBase = 1.9;
+                baseText = "_{1.9}";
+                extraText = ""; // No multiplier for challenge 2
+            }
+
+            labelPrestigeInfo.Text = $"Prestige effect: log{baseText}({prestigeCount + 1}) = {prestigeEffect:F2}{extraText} (diminishing returns)";
         }
 
         private void buttonPrestige_Click(object sender, EventArgs e)
@@ -405,9 +436,17 @@ namespace WinFormsApp1
         }
         private double GetPrestigeEffect()
         {
-            double effect = BigDouble.Log2(prestigeCount + 1);
+            double logBase = 2.0;
+            // Challenge 2 completed: use log base 1.9 instead of 2
             if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
-                effect *= 1.2; // Stronger prestiges challenge
+                logBase = 1.9;
+
+            double effect = BigDouble.Log(prestigeCount + 1, logBase);
+
+            // Challenge 1: Prestige effectiveness halved
+            if (activeChallengeIndex == 1 || activeChallengeIndex == 3)
+                effect /= 2.0;
+
             return effect;
         }
         private void UpdateGeneratorInfo()
@@ -486,7 +525,7 @@ namespace WinFormsApp1
         private BigDouble GetSoftCapThreshold()
         {
             if (challengesCompleted != null && challengesCompleted.Length > 3 && challengesCompleted[3])
-                return new BigDouble(10000); // Challenge 3: lifted cap
+                return new BigDouble(1_000_000); // Challenge 3: lifted cap
             return softcapThreshold;
         }
         private void UpdateSoftCapLabel()
@@ -568,22 +607,36 @@ namespace WinFormsApp1
 #if DEBUG
         private void buttonDebug_Click(object sender, EventArgs e)
         {
-            pointGain *= 10;
-            button1.Text = $"+{pointGain:F1} points";
+            // Set last claim date to yesterday
+            lastMilkClaimDate = DateTime.Now.Date.AddDays(-1);
+
+            // Re-run the daily reward logic
+            ApplyUnlocks(new GameState
+            {
+                HasUnlockedGenerators = buttonGenerator.Visible,
+                LastMilkClaimDate = lastMilkClaimDate,
+                Milk = milk,
+                MilkStreak = milkStreak
+            });
+
+            // Optionally, update UI to reflect changes
             UpdateUI();
         }
 #endif
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
-            // Pass in the current challenge completion state and ascension count
-            var challengeWindow = new AscensionShop(ascendCount, challengesCompleted);
+            var challengeWindow = new AscensionWindow(ascendCount, challengesCompleted);
             var result = challengeWindow.ShowDialog();
             if (result == DialogResult.OK)
             {
-                // Update challenge completion state from the window
                 challengesCompleted = challengeWindow.GetChallengesCompleted();
                 SaveGame();
                 UpdateUI();
+
+                if (challengeWindow.ChallengeActive)
+                {
+                    StartChallenge(challengeWindow.ActiveChallengeIndex);
+                }
             }
         }
         private void SaveGame()
@@ -605,6 +658,11 @@ namespace WinFormsApp1
                 HasUnlockedAscension = buttonAscend.Visible,
                 HasAscended = buttonOpenAscensionShop.Visible,
                 AscChallenges = challengesCompleted,
+                Milk = milk,
+                LastMilkClaimDate = lastMilkClaimDate,
+                MilkStreak = milkStreak,
+                BaseMilkUpgradeCount = baseMilkUpgradeCount,
+                MilkSpent = milkSpent,
             };
 
             var settings = new JsonSerializerSettings();
@@ -625,6 +683,28 @@ namespace WinFormsApp1
             labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
             labelSoftCap.Visible = state.HasUnlockedGenerators;
             labelPrestigeInfo.Visible = state.HasUnlockedGenerators;
+            buttonPremiumShop.Visible = state.HasUnlockedGenerators;
+            // After loading state.HasUnlockedGenerators
+            if (state.HasUnlockedGenerators)
+            {
+                var today = DateTime.Now.Date;
+                var lastClaim = lastMilkClaimDate.Date;
+
+                if (lastClaim < today)
+                {
+                    // If yesterday, increment streak; if missed, reset to 1
+                    if (lastClaim == today.AddDays(-1))
+                        milkStreak++;
+                    else
+                        milkStreak = 1;
+
+                    int milkEarned = 9 + milkStreak + baseMilkUpgradeCount;
+                    milk += milkEarned;
+                    lastMilkClaimDate = today;
+                    MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SaveGame();
+                }
+            }
 
             buttonAscend.Visible = state.HasUnlockedAscension;
             labelAscendCost.Visible = state.HasUnlockedAscension;
@@ -665,6 +745,14 @@ namespace WinFormsApp1
                 ascendCount = state.AscensionCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
+                milk = state.Milk;
+                lastMilkClaimDate = state.LastMilkClaimDate;
+                milkStreak = state.MilkStreak;
+                baseMilkUpgradeCount = state.BaseMilkUpgradeCount;
+                if (state.MilkSpent != null && state.MilkSpent.Length == 3)
+                    milkSpent = state.MilkSpent;
+                else
+                    milkSpent = new int[3];
                 if (state.AscChallenges != null && state.AscChallenges.Length == 4)
                     challengesCompleted = state.AscChallenges;
                 else
@@ -674,7 +762,6 @@ namespace WinFormsApp1
                 {
                     UnlockPrestigeFeature();
                 }
-
                 ApplyOfflineProgress(state.LastSavedTime);
                 ApplyUnlocks(state);
                 UpdateUI();
@@ -716,6 +803,7 @@ namespace WinFormsApp1
             buttonAscend.Visible = true;
             labelAscendCost.Visible = true;
             labelPrestigeInfo.Visible = true;
+            buttonPremiumShop.Visible = true;
             SaveGame();
         }
 
@@ -831,12 +919,87 @@ namespace WinFormsApp1
                 double reductionPercent = reductions * 0.05;
                 double effective = cooldownDuration * (1.0 - reductionPercent);
 
-                // Challenge 2: decrease by 0.1s (100ms)
+                // Challenge 2: increase to 10 seconds
+                if (activeChallengeIndex == 2 || activeChallengeIndex == 3)
+                    effective = 10000;
+
+                // Challenge 2 completed: decrease by 0.1s (100ms)
                 if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
                     effective -= 100;
 
                 return Math.Max((int)effective, 50);
             }
+        }
+        private void StartChallenge(int challengeIndex)
+        {
+            var cost = GetAscendCost();
+            bool canAscend = point >= cost;
+
+            // Reset everything as in ascension
+            point = BigDouble.Zero;
+            pointGain = BigDouble.One;
+            upgradeCount = 0;
+            prestigeCount = 0;
+            generatorCount = 0;
+            generatorCost = new BigDouble(100);
+            cooldownDuration = 1000;
+
+            if (canAscend)
+            {
+                ascendCount++;
+                ascensionPoints++;
+            }
+
+            activeChallengeIndex = challengeIndex;
+            UnlockAscensionFeature();
+            UpdateUI();
+            SaveGame();
+
+            if (canAscend)
+            {
+                MessageBox.Show($"Challenge {challengeIndex + 1} started! (Ascension performed)", "Challenge Active", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Challenge {challengeIndex + 1} started! (No ascension performed)", "Challenge Active", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        private void buttonPremiumShop_Click(object sender, EventArgs e)
+        {
+            using var shop = new PremiumWindow(milk, SpendMilkOnUpgrade, baseMilkUpgradeCount, milkSpent);
+            shop.ShowDialog(this);
+            UpdateUI();
+        }
+        // upgradeIndex: 0, 1, 2; amount: how much milk to spend
+        private bool SpendMilkOnUpgrade(int upgradeIndex, int amount)
+        {
+            if (upgradeIndex == 3) // Base milk gain upgrade
+            {
+                int cost = 10 + baseMilkUpgradeCount * 2;
+                if (milk >= cost && amount == 1)
+                {
+                    milk -= cost;
+                    baseMilkUpgradeCount++;
+                    SaveGame();
+                    UpdateUI();
+                    return true;
+                }
+                return false;
+            }
+
+            if (upgradeIndex >= 0 && upgradeIndex <= 2)
+            {
+                if (milk >= amount)
+                {
+                    milk -= amount;
+                    milkSpent[upgradeIndex] += amount;
+                    SaveGame();
+                    UpdateUI();
+                    return true;
+                }
+                return false;
+            }
+            return false;
         }
     }
 }

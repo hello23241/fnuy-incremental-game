@@ -1,6 +1,6 @@
 ﻿namespace WinFormsApp1
 {
-    partial class AscensionShop
+    partial class AscensionWindow
     {
         private System.Windows.Forms.Panel panelTitleBar;
         private System.Windows.Forms.Label labelTitle;
@@ -216,14 +216,14 @@
             labelChallenges.TabIndex = 0;
             labelChallenges.Text = "";
             // 
-            // AscensionShop
+            // AscensionWindow
             // 
             BackColor = Color.FromArgb(30, 60, 120);
             ClientSize = new Size(579, 405);
             Controls.Add(panelTitleBar);
             Controls.Add(tabControl);
             FormBorderStyle = FormBorderStyle.None;
-            Name = "AscensionShop";
+            Name = "AscensionWindow";
             Text = "Ascension Window";
             panelTitleBar.ResumeLayout(false);
             panelTitleBar.PerformLayout();
