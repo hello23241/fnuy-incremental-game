@@ -46,10 +46,17 @@
             labelPointGain = new Label();
             labelPointsPerSecond = new Label();
             panelTitleBar = new Panel();
+            labelTitle = new Label();
+            buttonMinimize = new Button();
+            buttonClose = new Button();
             buttonTranscend = new Button();
             labelTranscendCost = new Label();
             labelCooldown = new Label();
             buttonDebug = new Button();
+            buttonPremiumShop = new Button();
+            labelChallengeState = new Label();
+            buttonInfoDailyGain = new Button();
+            panelTitleBar.SuspendLayout();
             SuspendLayout();
             // 
             // button1
@@ -84,6 +91,8 @@
             buttonUpgrade.Text = "Upgrade";
             buttonUpgrade.UseVisualStyleBackColor = true;
             buttonUpgrade.Click += buttonUpgrade_Click;
+            // Support right-click buy-max when wired in code-behind (handler exists in MainForm.cs)
+            buttonUpgrade.MouseDown += buttonUpgrade_MouseDown;
             // 
             // labelUpgradeCost
             // 
@@ -169,7 +178,7 @@
             // 
             // buttonGenerator
             // 
-            buttonGenerator.Location = new Point(251, 122);
+            buttonGenerator.Location = new Point(319, 115);
             buttonGenerator.Name = "buttonGenerator";
             buttonGenerator.Size = new Size(120, 30);
             buttonGenerator.TabIndex = 14;
@@ -191,7 +200,7 @@
             // labelGeneratorInfo
             // 
             labelGeneratorInfo.ForeColor = Color.White;
-            labelGeneratorInfo.Location = new Point(377, 122);
+            labelGeneratorInfo.Location = new Point(445, 115);
             labelGeneratorInfo.Name = "labelGeneratorInfo";
             labelGeneratorInfo.Size = new Size(515, 30);
             labelGeneratorInfo.TabIndex = 15;
@@ -225,7 +234,7 @@
             // labelPointsPerSecond
             // 
             labelPointsPerSecond.ForeColor = Color.White;
-            labelPointsPerSecond.Location = new Point(680, 63);
+            labelPointsPerSecond.Location = new Point(670, 58);
             labelPointsPerSecond.Name = "labelPointsPerSecond";
             labelPointsPerSecond.Size = new Size(139, 30);
             labelPointsPerSecond.TabIndex = 16;
@@ -235,11 +244,59 @@
             // 
             // panelTitleBar
             // 
+            panelTitleBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelTitleBar.BackColor = Color.FromArgb(24, 24, 24);
+            panelTitleBar.Controls.Add(labelTitle);
+            panelTitleBar.Controls.Add(buttonMinimize);
+            panelTitleBar.Controls.Add(buttonClose);
             panelTitleBar.Location = new Point(0, 0);
             panelTitleBar.Name = "panelTitleBar";
             panelTitleBar.Size = new Size(1063, 28);
             panelTitleBar.TabIndex = 17;
+            panelTitleBar.MouseDown += panelTitleBar_MouseDown;
+            panelTitleBar.MouseMove += panelTitleBar_MouseMove;
+            panelTitleBar.MouseUp += panelTitleBar_MouseUp;
+            // 
+            // labelTitle
+            // 
+            labelTitle.AutoSize = true;
+            labelTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            labelTitle.ForeColor = Color.Gainsboro;
+            labelTitle.Location = new Point(10, 4);
+            labelTitle.Name = "labelTitle";
+            labelTitle.Size = new Size(156, 21);
+            labelTitle.TabIndex = 301;
+            labelTitle.Text = "Myrtle incremental";
+            // 
+            // buttonMinimize
+            // 
+            buttonMinimize.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
+            buttonMinimize.FlatAppearance.BorderSize = 0;
+            buttonMinimize.FlatStyle = FlatStyle.Flat;
+            buttonMinimize.ForeColor = Color.Gainsboro;
+            buttonMinimize.Location = new Point(986, 0);
+            buttonMinimize.Name = "buttonMinimize";
+            buttonMinimize.Size = new Size(40, 28);
+            buttonMinimize.TabIndex = 302;
+            buttonMinimize.Text = "—";
+            buttonMinimize.UseVisualStyleBackColor = false;
+            buttonMinimize.Click += buttonMinimize_Click;
+            // 
+            // buttonClose
+            // 
+            buttonClose.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonClose.BackColor = Color.FromArgb(32, 32, 32);
+            buttonClose.FlatAppearance.BorderSize = 0;
+            buttonClose.FlatStyle = FlatStyle.Flat;
+            buttonClose.ForeColor = Color.Gainsboro;
+            buttonClose.Location = new Point(1023, 0);
+            buttonClose.Name = "buttonClose";
+            buttonClose.Size = new Size(40, 28);
+            buttonClose.TabIndex = 303;
+            buttonClose.Text = "X";
+            buttonClose.UseVisualStyleBackColor = false;
+            buttonClose.Click += buttonClose_Click;
             // 
             // buttonTranscend
             // 
@@ -271,28 +328,45 @@
             labelCooldown.Name = "labelCooldown";
             labelCooldown.Size = new Size(120, 20);
             labelCooldown.TabIndex = 0;
-            //
-            // buttonPremiumShop
-            //
-            buttonPremiumShop = new Button();
-            buttonPremiumShop.Location = new Point(labelPointsPerSecond.Right + 10, labelPointsPerSecond.Top);
-            buttonPremiumShop.Name = "buttonPremiumShop";
-            buttonPremiumShop.Size = new Size(120, 30);
-            buttonPremiumShop.TabIndex = 201;
-            buttonPremiumShop.Text = $"🥛 {milk}";
-            buttonPremiumShop.UseVisualStyleBackColor = true;
-            buttonPremiumShop.Click += buttonPremiumShop_Click;
-            Controls.Add(buttonPremiumShop);
             // 
             // buttonDebug
             // 
-            buttonDebug.Location = new Point(916, 517);
+            buttonDebug.Location = new Point(961, 513);
             buttonDebug.Name = "buttonDebug";
-            buttonDebug.Size = new Size(120, 30);
+            buttonDebug.Size = new Size(75, 34);
             buttonDebug.TabIndex = 200;
             buttonDebug.Text = "Debug";
             buttonDebug.UseVisualStyleBackColor = true;
-            //buttonDebug.Click += buttonDebug_Click;
+            // 
+            // buttonPremiumShop
+            // 
+            buttonPremiumShop.Location = new Point(916, 58);
+            buttonPremiumShop.Name = "buttonPremiumShop";
+            buttonPremiumShop.Size = new Size(120, 30);
+            buttonPremiumShop.TabIndex = 201;
+            buttonPremiumShop.Text = "Premium Shop";
+            buttonPremiumShop.UseVisualStyleBackColor = true;
+            buttonPremiumShop.Click += buttonPremiumShop_Click;
+            // 
+            // labelChallengeState
+            // 
+            labelChallengeState.AutoSize = true;
+            labelChallengeState.ForeColor = Color.Red;
+            labelChallengeState.Location = new Point(273, 63);
+            labelChallengeState.Name = "labelChallengeState";
+            labelChallengeState.Size = new Size(103, 15);
+            labelChallengeState.TabIndex = 202;
+            labelChallengeState.Text = "Challenge 1 active";
+            // 
+            // buttonInfoDailyGain
+            // 
+            buttonInfoDailyGain.Location = new Point(877, 58);
+            buttonInfoDailyGain.Name = "buttonInfoDailyGain";
+            buttonInfoDailyGain.Size = new Size(33, 30);
+            buttonInfoDailyGain.TabIndex = 203;
+            buttonInfoDailyGain.Text = "🛈";
+            buttonInfoDailyGain.UseVisualStyleBackColor = true;
+            buttonInfoDailyGain.Click += buttonInfoDailyGain_Click;
             // 
             // MainForm
             // 
@@ -300,6 +374,8 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(32, 32, 32);
             ClientSize = new Size(1063, 574);
+            Controls.Add(buttonInfoDailyGain);
+            Controls.Add(labelChallengeState);
             Controls.Add(labelCooldown);
             Controls.Add(buttonTranscend);
             Controls.Add(labelTranscendCost);
@@ -322,10 +398,13 @@
             Controls.Add(buttonOpenAscensionShop);
             Controls.Add(labelPointsPerSecond);
             Controls.Add(buttonDebug);
-            FormBorderStyle = FormBorderStyle.FixedSingle;
+            Controls.Add(buttonPremiumShop);
+            FormBorderStyle = FormBorderStyle.None;
             MaximizeBox = false;
             Name = "MainForm";
             Text = "MainForm";
+            panelTitleBar.ResumeLayout(false);
+            panelTitleBar.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -352,7 +431,13 @@
         private System.Windows.Forms.Button buttonTranscend;
         private System.Windows.Forms.Label labelTranscendCost;
         private System.Windows.Forms.Label labelCooldown;
-        private System.Windows.Forms.Button buttonPremiumShop;
         private System.Windows.Forms.Button buttonDebug;
+        private System.Windows.Forms.Button buttonPremiumShop;
+        private Label labelChallengeState;
+        private Panel panelTitleBar;
+        private Button buttonMinimize;
+        private Button buttonClose;
+        private Button buttonInfoDailyGain;
+        private Label labelTitle;
     }
 }
