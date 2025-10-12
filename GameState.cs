@@ -19,6 +19,7 @@ namespace WinFormsApp1
         public double OfflineMultiplier;
         //hidden variables
         public bool HasUnlockedPrestige;
+        public bool HasUnlockedPremiumShop { get; set; }
         public bool HasUnlockedGenerators;
         public bool HasUnlockedAscension;
         public bool HasAscended;
@@ -26,7 +27,7 @@ namespace WinFormsApp1
         public BigDouble Milk { get; set; }
         public DateTime LastMilkClaimDate { get; set; }
         public int MilkStreak { get; set; }
-        public int[] MilkSpent { get; set; } = new int[3];
+        public BigDouble[] MilkSpent { get; set; } = new BigDouble[3];
         public int BaseMilkUpgradeCount { get; set; }
     }
 }

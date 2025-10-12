@@ -123,7 +123,7 @@ namespace WinFormsApp1
                         var imageBytes = await http.GetByteArrayAsync(imageUrl);
                         using var ms = new System.IO.MemoryStream(imageBytes);
                         pictureBox.Image = Image.FromStream(ms);
-                        label.Text = "You have transcended!";
+                        label.Text = "You earned milk for transcending and everything before transcension have been reset!";
                         return;
                     }
                 }

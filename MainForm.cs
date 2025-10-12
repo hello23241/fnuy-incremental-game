@@ -1,15 +1,23 @@
 ﻿using BreakInfinity;
-using System.IO;
 using Newtonsoft.Json;
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
+using System.Globalization;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace WinFormsApp1
 {
     public partial class MainForm : Form
     {
+        // Autoclick progressbar
+        private Panel autoclickBarBg;
+        private Panel autoclickBarFill;
+        private readonly Point autoclickBarLocation = new Point(188, 118);
+        private readonly Size autoclickBarSize = new Size(100, 23);
         // Core game state
-        private BigDouble point = BigDouble.Zero;
+        private BigDouble point = new BigDouble(0);
         private BigDouble pointGain = BigDouble.One;
         private BigDouble PrestigeIncrement = new BigDouble(4);
         private BigDouble generatorCost = new BigDouble(100);
@@ -19,18 +27,19 @@ namespace WinFormsApp1
         private int transcendFlashStep = 0;
         private readonly BigDouble transcendCost = new BigDouble(1_000_000_000);
         // Premium currency
+        private bool hasUnlockedPremiumShop = false;
         private BigDouble milk = BigDouble.Zero;
         private DateTime lastMilkClaimDate = DateTime.MinValue;
         private int baseMilkUpgradeCount = 0;
         private int milkStreak = 0;
-        private int[] milkSpent = new int[3];
+        private BigDouble[] milkSpent = new BigDouble[3];
         // Base costs and scaling factors
         private readonly BigDouble baseUpgradeCost = new BigDouble(10);
         private readonly double upgradeScale = 1.05;
         private readonly BigDouble basePrestigeCost = new BigDouble(1000);
         private readonly double prestigeScale = 3;
         private readonly BigDouble baseAscendCost = new BigDouble(1_000_000);
-        private readonly double ascendScale = 2.5;
+        private readonly double ascendScale = 2;
         // Purchase counts (persist these, not the cost)
         private int upgradeCount = 0;
         private int prestigeCount = 0;
@@ -43,111 +52,57 @@ namespace WinFormsApp1
         // Timers and cooldowns
         private System.Windows.Forms.Timer generatorTimer;
         private System.Windows.Forms.Timer cooldownTimer;
-        private System.Windows.Forms.Timer holdTimer;
+        private System.Windows.Forms.Timer autoClickTimer;
         private int cooldownDuration = 1000; // ms
+        private int? prevCooldownDurationForChallenge; // snapshot to restore after challenge
         private int cooldownElapsed = 0;
-        private double offlineMultiplier = 0.05;
         private bool isCooldown = false;
+        private int autoClickElapsed = 0; // ms
 
         // Save path
         private readonly string savePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FnuyIncrementalGame",
             "savegame.json");
-        private Panel panelTitleBar;
-        private Button buttonMinimize;
-        private Button buttonClose;
-        private Label labelTitle;
-        private int activeChallengeIndex = -1; // -1 means no challenge active
+
+        private int activeChallengeIndex = -1;
         //debug
         public MainForm()
         {
             InitializeComponent();
+            autoclickBarBg = new Panel
+            {
+                BackColor = Color.FromArgb(48, 48, 48),
+                Location = autoclickBarLocation,
+                Size = autoclickBarSize,
+                Visible = false
+            };
+            autoclickBarFill = new Panel
+            {
+                BackColor = Color.LimeGreen,
+                Location = new Point(0, 0),
+                Size = new Size(0, autoclickBarBg.Height),
+                Visible = true
+            };
+            autoclickBarBg.Controls.Add(autoclickBarFill);
+            Controls.Add(autoclickBarBg);
+            autoclickBarBg.BringToFront();
+
+            autoClickTimer = new System.Windows.Forms.Timer();
+            autoClickTimer.Tick += AutoClickTimer_Tick;
+            autoClickTimer.Enabled = false;
 #if DEBUG
-        buttonDebug.Visible = true;
+            buttonDebug.Visible = true;
 #else
         buttonDebug.Visible = false;
 #endif
             this.Text = "Myrtle incremental";
             this.Icon = Properties.Resources.NianBean;
 
-            // --- Hold Timer for button1 ---
-            holdTimer = new System.Windows.Forms.Timer();
-            holdTimer.Tick += HoldTimer_Tick;
-            button1.MouseDown += Button1_MouseDown;
-            button1.MouseUp += Button1_MouseUp;
-            button1.MouseLeave += Button1_MouseUp;
-
-            // --- Custom Title Bar Panel ---
-            panelTitleBar = new Panel();
-            panelTitleBar.Size = new Size(this.ClientSize.Width, 28);
-            panelTitleBar.Location = new Point(0, 0);
-            panelTitleBar.BackColor = Color.FromArgb(24, 24, 24);
-            panelTitleBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            this.Controls.Add(panelTitleBar);
-            panelTitleBar.BringToFront();
-
-            // --- Title label ---
-            labelTitle = new Label();
-            labelTitle.Text = "Myrtle incremental";
-            labelTitle.ForeColor = Color.Gainsboro;
-            labelTitle.Font = new Font("Segoe UI", 12, FontStyle.Bold);
-            labelTitle.Location = new Point(10, 4);
-            labelTitle.AutoSize = true;
-            panelTitleBar.Controls.Add(labelTitle);
-
-            // --- Hold Timer for button1 ---
-            button1.MouseDown += Button1_MouseDown;
-            button1.MouseUp += Button1_MouseUp;
-            button1.MouseLeave += Button1_MouseUp;
-
             //Transcend flash timer
             transcendFlashTimer = new System.Windows.Forms.Timer();
             transcendFlashTimer.Interval = 200;
             transcendFlashTimer.Tick += TranscendFlashTimer_Tick;
-
-            // --- Custom Minimize Button ---
-            buttonMinimize = new Button();
-            buttonMinimize.Size = new Size(40, 28);
-            buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
-            buttonMinimize.Text = "—";
-            buttonMinimize.FlatStyle = FlatStyle.Flat;
-            buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
-            buttonMinimize.ForeColor = Color.Gainsboro;
-            buttonMinimize.FlatAppearance.BorderSize = 0;
-            buttonMinimize.MouseEnter += (s, e) => buttonMinimize.BackColor = Color.FromArgb(64, 64, 64);
-            buttonMinimize.MouseLeave += (s, e) => buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
-            buttonMinimize.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
-            panelTitleBar.Controls.Add(buttonMinimize);
-
-            // --- Custom Close Button ---
-            buttonClose = new Button();
-            buttonClose.Size = new Size(40, 28);
-            buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
-            buttonClose.Text = "X";
-            buttonClose.FlatStyle = FlatStyle.Flat;
-            buttonClose.BackColor = Color.FromArgb(32, 32, 32);
-            buttonClose.ForeColor = Color.Gainsboro;
-            buttonClose.FlatAppearance.BorderSize = 0;
-            buttonClose.MouseEnter += (s, e) => buttonClose.BackColor = Color.FromArgb(64, 64, 64);
-            buttonClose.MouseLeave += (s, e) => buttonClose.BackColor = Color.FromArgb(32, 32, 32);
-            buttonClose.Click += (s, e) => this.Close();
-            panelTitleBar.Controls.Add(buttonClose);
-
-            // --- Adjust button positions on resize ---
-            panelTitleBar.Resize += (s, e) =>
-            {
-                buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
-                buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
-            };
-
-            // --- Dragging support on the panel ---
-            panelTitleBar.MouseDown += panelTitleBar_MouseDown;
-            panelTitleBar.MouseMove += panelTitleBar_MouseMove;
-            panelTitleBar.MouseUp += panelTitleBar_MouseUp;
-
-            // Remove system title bar
-            this.FormBorderStyle = FormBorderStyle.None;
 
             // Cooldown for click
             cooldownTimer = new System.Windows.Forms.Timer { Interval = 50 };
@@ -163,17 +118,34 @@ namespace WinFormsApp1
             buttonGenerator.Visible = labelGeneratorInfo.Visible = labelSoftCap.Visible = false;
             buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
             buttonTranscend.Visible = labelTranscendCost.Visible = buttonPremiumShop.Visible = false;
-
+            labelChallengeState.Visible = buttonInfoDailyGain.Visible = false;
 #if DEBUG
             buttonDebug.Visible = true;
             buttonDebug.Click += buttonDebug_Click;
 #endif
+
             LoadGame();
             labelCooldown.Text = "";
             CheckForUpdates();
             UpdateUI();
         }
 
+        private async Task<DateTime?> GetServerUtcDateAsync()
+        {
+            try
+            {
+                using var client = new HttpClient();
+                // Use a reliable time API with good connectivity in Vietnam (Google's time API via HTTP HEAD)
+                var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, "https://www.google.com"));
+                if (response.Headers.Date.HasValue)
+                    return response.Headers.Date.Value.UtcDateTime;
+            }
+            catch
+            {
+                // Network or API error
+            }
+            return null;
+        }
         private async void CheckForUpdates()
         {
             string manifestUrl = "https://hello23241.github.io/fnuy-incremental-manifest/manifest.json";
@@ -235,52 +207,133 @@ namespace WinFormsApp1
 
         private void UpdateUI()
         {
+            // Batch UI layout updates for performance
+            this.SuspendLayout();
+
+            // Recalculate point gain first so all formatted values are up-to-date
+            RecalculatePointGain();
+
+            // Cache expensive calculations and costs
+            var softCapDivisor = GetSoftCapDivisor(point);
+            var upgradeCost = GetUpgradeCost();
+            var prestigeCost = GetPrestigeCost();
+            var ascendCost = GetAscendCost();
+
+            var formattedPoint = FormatNumbers(point);
+            var formattedGain = FormatNumbers(pointGain / softCapDivisor);
+            var formattedUpgradeCost = FormatNumbers(upgradeCost);
+            var formattedPrestigeCost = FormatNumbers(prestigeCost);
+            var formattedAscendCost = FormatNumbers(ascendCost);
+            var formattedPointGain = FormatNumbers(pointGain);
+            var formattedTranscendCost = FormatNumbers(transcendCost);
+            var formattedMilk = FormatNumbers(milk);
+
             UpdateButtonStates();
             UpdateUpgradeInfoLabel();
             UpdateGeneratorInfo();
             UpdateSoftCapLabel();
-            RecalculatePointGain();
             UpdateGeneratorTimerInterval();
 
-            BigDouble gain = pointGain / GetSoftCapDivisor(point);
-            labelPoint.Text = $"Points: {FormatNumbers(point)}";
-            button1.Text = $"+{FormatNumbers(gain)} points";
-            labelUpgradeCost.Text = $"Upgrade Cost: {FormatNumbers(GetUpgradeCost())}";
-            labelPrestigeCost.Text = $"Prestige Cost: {FormatNumbers(GetPrestigeCost())}";
-            labelAscendCost.Text = $"Ascend Cost: {FormatNumbers(GetAscendCost())}";
-            labelPointGain.Text = $"Point Gain: {FormatNumbers(pointGain)}";
-            labelTranscendCost.Text = $"Transcend Cost: {FormatNumbers(transcendCost)}";
-            buttonPremiumShop.Text = $"🥛 {FormatNumbers(milk)}";
+            // Only update if changed
+            if (labelPoint.Text != $"Points: {formattedPoint}")
+                labelPoint.Text = $"Points: {formattedPoint}";
+            if (button1.Text != $"+{formattedGain} points")
+                button1.Text = $"+{formattedGain} points";
+            if (labelUpgradeCost.Text != $"Upgrade Cost: {formattedUpgradeCost}")
+                labelUpgradeCost.Text = $"Upgrade Cost: {formattedUpgradeCost}";
+            if (labelPrestigeCost.Text != $"Prestige Cost: {formattedPrestigeCost}")
+                labelPrestigeCost.Text = $"Prestige Cost: {formattedPrestigeCost}";
+            if (labelAscendCost.Text != $"Ascend Cost: {formattedAscendCost}")
+                labelAscendCost.Text = $"Ascend Cost: {formattedAscendCost}";
+            if (labelPointGain.Text != $"Point Gain: {formattedPointGain}")
+                labelPointGain.Text = $"Point Gain: {formattedPointGain}";
+            if (labelTranscendCost.Text != $"Transcend Cost: {formattedTranscendCost}")
+                labelTranscendCost.Text = $"Transcend Cost: {formattedTranscendCost}";
+            if (buttonPremiumShop.Text != $"🥛 {formattedMilk}")
+                buttonPremiumShop.Text = $"🥛 {formattedMilk}";
 
             if (upgradeCount != 0)
             {
-                if (PermanentUpgradeBonus > 0)
-                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount} (+{PermanentUpgradeBonus} free)";
-                else
-                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
-                labelUpgradeNote.Visible = true;
+                string upgradeNoteText = $"Upgrade count: {EffectiveUpgradeCount}";
+                if (!labelUpgradeNote.Visible)
+                    labelUpgradeNote.Visible = true;
             }
             else
             {
-                labelUpgradeNote.Visible = false;
+                if (labelUpgradeNote.Visible)
+                    labelUpgradeNote.Visible = false;
             }
 
             // Transcend button logic
-            buttonTranscend.Enabled = point >= transcendCost;
-            if (point >= transcendCost)
+            bool canTranscend = point >= transcendCost;
+            if (buttonTranscend.Enabled != canTranscend)
+                buttonTranscend.Enabled = canTranscend;
+            if (canTranscend)
             {
                 if (!transcendFlashTimer.Enabled)
                     transcendFlashTimer.Start();
             }
             else
             {
-                transcendFlashTimer.Stop();
-                buttonTranscend.BackColor = Color.Gray; // Match other disabled buttons
+                if (transcendFlashTimer.Enabled)
+                    transcendFlashTimer.Stop();
+                if (buttonTranscend.BackColor != Color.Gray)
+                    buttonTranscend.BackColor = Color.Gray; // Match other disabled buttons
             }
 
-            buttonUpgrade.Enabled = point >= GetUpgradeCost();
-            buttonPrestige.Enabled = point >= GetPrestigeCost();
-            buttonAscend.Enabled = point >= GetAscendCost();
+            // Enable auto-click if ascendCount >= 2
+            bool autoClickEnabled = ascendCount >= 2;
+            int autoClickInterval = EffectiveCooldownDuration * 2;
+            if (autoClickTimer.Enabled != autoClickEnabled)
+                autoClickTimer.Enabled = autoClickEnabled;
+            if (autoClickTimer.Interval != 50)
+                autoClickTimer.Interval = 50;
+
+            // Autoclick progress bar logic (custom bar replaces native ProgressBar)
+            autoclickBarBg.Visible = autoClickEnabled;
+            if (autoClickEnabled)
+            {
+                autoclickBarFill.Height = autoclickBarBg.Height;
+
+                int percent = (int)(100L * autoClickElapsed / autoClickInterval);
+                if (percent < 0) percent = 0;
+                if (percent > 100) percent = 100;
+                UpdateAutoclickBar(percent);
+            }
+            // Challenge state
+            if (activeChallengeIndex == -1)
+            {
+                if (labelChallengeState.Visible)
+                    labelChallengeState.Visible = false;
+            }
+            else
+            {
+                string challengeText = $"Challenge {activeChallengeIndex + 1} active";
+                switch (activeChallengeIndex)
+                {
+                    case 0:
+                        challengeText += "\nPoint gain /10";
+                        break;
+                    case 1:
+                        challengeText += "\nPrestige effectiveness /2";
+                        break;
+                    case 2:
+                        challengeText += "\nPoint gain interval 10s";
+                        break;
+                    case 3:
+                        challengeText += "\nReduced point gain, prestige effectiveness and increased cooldown";
+                        break;
+                }
+                if (!labelChallengeState.Visible)
+                    labelChallengeState.Visible = true;
+                if (labelChallengeState.Text != challengeText)
+                    labelChallengeState.Text = challengeText;
+                // Only set font if not already bold
+                if (labelChallengeState.Font.Style != FontStyle.Bold)
+                    labelChallengeState.Font = new Font(labelChallengeState.Font, FontStyle.Bold);
+            }
+
+            this.ResumeLayout();
         }
         private void UpdateButtonStates()
         {
@@ -309,8 +362,8 @@ namespace WinFormsApp1
         private void Button1_Click(object sender, EventArgs e)
         {
             if (isCooldown) return;
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gain = pointGain * AscensionMultiplier / divisor;
+            BigDouble gain = pointGain * AscensionMultiplier;
+            gain = ApplySoftCap(point, gain);
             point += gain;
             UpdateUI();
             isCooldown = true;
@@ -318,6 +371,7 @@ namespace WinFormsApp1
             cooldownTimer.Interval = 50; // Always 50ms for smooth updates
             cooldownTimer.Start();
             labelCooldown.Text = $"Cooldown: {EffectiveCooldownDuration / 1000.0:F2}s";
+            CheckChallengeCompletion();
         }
         private void CooldownTimer_Tick(object sender, EventArgs e)
         {
@@ -335,38 +389,42 @@ namespace WinFormsApp1
                 labelCooldown.Text = ""; // Clear when ready
             }
         }
-        private void Button1_MouseDown(object sender, MouseEventArgs e)
+        private void AutoClickTimer_Tick(object sender, EventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            int autoClickInterval = EffectiveCooldownDuration * 2;
+            autoClickElapsed += autoClickTimer.Interval;
+            // Update custom progress bar
+            if (autoclickBarBg.Visible)
             {
-                if (!isCooldown)
-                    Button1_Click(sender, e); // Immediate click
-
-                // Only allow hold if ascension count is 2 or more
-                if (ascendCount >= 2)
+                int percent = (int)(100L * autoClickElapsed / autoClickInterval);
+                if (autoClickElapsed >= autoClickInterval)
                 {
-                    holdTimer.Interval = EffectiveCooldownDuration;
-                    holdTimer.Start();
+                    UpdateAutoclickBar(100); // show full before reset
+                    BigDouble gain = pointGain * AscensionMultiplier;
+                    gain = ApplySoftCap(point, gain);
+                    point += gain;
+                    autoClickElapsed = 0;
+                    UpdateUI();
+                }
+                else
+                {
+                    if (percent < 0) percent = 0;
+                    if (percent > 100) percent = 100;
+                    UpdateAutoclickBar(percent);
                 }
             }
         }
-        private void Button1_MouseUp(object sender, EventArgs e)
-        {
-            holdTimer.Stop();
-        }
-
-        private void HoldTimer_Tick(object sender, EventArgs e)
-        {
-            if (!isCooldown)
-                Button1_Click(button1, EventArgs.Empty);
-            holdTimer.Interval = EffectiveCooldownDuration; // Update in case ascendCount changed
-        }
         private void RecalculatePointGain()
         {
-            double prestigeEffect = GetPrestigeEffect();
             BigDouble divisor = GetSoftCapDivisor(point);
-            double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 1.5 : 1.0;
-
+            if (divisor == 0)
+            {
+                pointGain = BigDouble.Zero;
+                point = BigDouble.Min(point, GetSoftCapThreshold() * 10_000);
+                return;
+            }
+            double prestigeEffect = GetPrestigeEffect();
+            double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 3 : 1.0;
             // Challenge 0: Point gain is divided by 10
             double challengeDebuff = 1.0;
             if (activeChallengeIndex == 0 || activeChallengeIndex == 3)
@@ -374,7 +432,7 @@ namespace WinFormsApp1
 
             pointGain = (BigDouble.One + EffectiveUpgradeCount * (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor))
                 * challenge0Multi * challengeDebuff *
-                (1 + milkSpent[0] * 0.01);
+                (BigDouble.One + milkSpent[0] * 0.0001);
         }
         private BigDouble GetPrestigeIncrement()
         {
@@ -397,11 +455,49 @@ namespace WinFormsApp1
                 UpdateUI();
             }
         }
+
+        // Right-click handler: if player has >=5 ascensions, buy max upgrades on right-click
+        private void buttonUpgrade_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
+                return;
+
+            if (ascendCount < 5)
+                return; // feature unlocks at 5 ascensions
+
+            // Buy as many upgrades as possible
+            bool purchasedAny = false;
+            while (true)
+            {
+                var cost = GetUpgradeCost();
+                if (point < cost)
+                    break;
+                point -= cost;
+                upgradeCount++;
+                purchasedAny = true;
+                // Prevent infinite loop in case GetUpgradeCost misbehaves
+                // (cost should increase each iteration)
+            }
+
+            if (purchasedAny)
+            {
+                if (cooldownDuration == 1000)
+                {
+                    UnlockPrestigeFeature();
+                    cooldownDuration = 500;
+                }
+                RecalculatePointGain();
+                UpdateUI();
+                SaveGame();
+            }
+        }
+
         private void UpdateUpgradeInfoLabel()
         {
             double prestigeEffect = GetPrestigeEffect();
             BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gainPerUpgrade = 1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor;
+            BigDouble gainPerUpgrade = (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor)
+                * (1 + milkSpent[0] * 0.0001);
 
             labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
 
@@ -432,6 +528,7 @@ namespace WinFormsApp1
                 prestigeCount++;
                 UnlockGeneratorFeature();
                 UpdateUI();
+                CheckChallengeCompletion();
             }
         }
         private double GetPrestigeEffect()
@@ -471,6 +568,7 @@ namespace WinFormsApp1
                 generatorCost = BigDouble.Pow(generatorCost, 2);
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
+                CheckChallengeCompletion();
             }
         }
 
@@ -479,8 +577,8 @@ namespace WinFormsApp1
             if (generatorCount > 0)
             {
                 labelPointsPerSecond.Visible = true;
-                BigDouble divisor = GetSoftCapDivisor(point);
-                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier / divisor;
+                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier;
+                passiveGain = ApplySoftCap(point, passiveGain);
                 point += passiveGain;
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
@@ -507,20 +605,38 @@ namespace WinFormsApp1
 
         private BigDouble GetUpgradeCost() => baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
         private BigDouble GetPrestigeCost() => basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
-        private BigDouble GetAscendCost() => baseAscendCost * BigDouble.Pow(ascendScale, ascendCount);
+        private BigDouble GetAscendCost()
+        {
+            if (ascendCount <= 2)
+                return baseAscendCost;
+            return baseAscendCost * BigDouble.Pow(ascendScale, ascendCount - 2);
+        }
 
         // Soft cap
         private BigDouble GetSoftCapDivisor(BigDouble point)
         {
-            double divisor = 1.0;
-            if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
-                divisor /= 1.1; // Less punishing challenge
+            BigDouble divisor = BigDouble.One;
 
-            if (point <= GetSoftCapThreshold())
+            if (milkSpent != null && milkSpent.Length > 1 && milkSpent[1] > BigDouble.Zero)
+                divisor /= (BigDouble.Min(BigDouble.Log(milkSpent[1], 1.1), milkSpent[1]) * 0.01 + BigDouble.One);
+
+            var threshold = GetSoftCapThreshold();
+            var threshold10000 = threshold * 10_000;
+
+            if (point <= threshold)
+            {
                 return BigDouble.One * divisor;
-
-            double scale = BigDouble.Log10(point / GetSoftCapThreshold()) * 10;
-            return (BigDouble.One + scale) * divisor;
+            }
+            else if (point <= threshold10000)
+            {
+                // Linear scaling: divisor = point / threshold
+                var linearDivisor = point / threshold;
+                return linearDivisor * divisor;
+            }
+            else
+            {
+                return 0; // Hard cap: gains are disabled
+            }
         }
         private BigDouble GetSoftCapThreshold()
         {
@@ -530,18 +646,26 @@ namespace WinFormsApp1
         }
         private void UpdateSoftCapLabel()
         {
+            var threshold = GetSoftCapThreshold();
+            var threshold10000 = threshold * 10_000;
             BigDouble divisor = GetSoftCapDivisor(point);
-            if (point > GetSoftCapThreshold())
+
+            if (point >= threshold10000)
+            {
+                // Hard cap: gains are disabled
+                labelSoftCap.Visible = true;
+                labelSoftCap.Text = $"Current points exceed {FormatNumbers(threshold10000)} (10k× softcap). All gain is disabled by the soft cap.";
+            }
+            else if (point > threshold)
             {
                 labelSoftCap.Visible = true;
-                labelSoftCap.Text = $"Current points is over {FormatNumbers(GetSoftCapThreshold())}, gain is divided by {FormatNumbers(divisor)}";
+                labelSoftCap.Text = $"Current points is over {FormatNumbers(threshold)}, gain is divided by {FormatNumbers(divisor)}";
             }
             else
             {
                 labelSoftCap.Visible = false;
             }
         }
-
         private string FormatNumbers(BigDouble value)
         {
             if (value >= BigDouble.Pow(10, 308))
@@ -569,11 +693,17 @@ namespace WinFormsApp1
             return $"{value:F1}{suffixes[suffixIndex]}";
         }
 
-        private void ApplyOfflineProgress(DateTime lastSaved)
+        private void ApplyOfflineProgress(DateTime lastSaved, DateTime serverNow)
         {
-            TimeSpan offlineTime = DateTime.Now - lastSaved;
-            BigDouble seconds = offlineTime.TotalSeconds;
-            if (generatorCount <= 0 || seconds <= 0)
+            TimeSpan offlineTime = serverNow - lastSaved;
+            int seconds = (int)offlineTime.TotalSeconds;
+            if (seconds <= 0)
+            {
+                // If time difference is negative or zero, skip offline progress
+                return;
+            }
+            int trueSeconds = Math.Min((int)BigDouble.Log(seconds, 1.01), seconds);
+            if (generatorCount <= 0)
             {
                 if (prestigeCount == 0)
                     MessageBox.Show("Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
@@ -581,15 +711,17 @@ namespace WinFormsApp1
                     MessageBox.Show("Welcome back! You currently don't own any generator for offline progress.");
                 return;
             }
-
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount) * 0.01 * pointGain * offlineMultiplier / divisor;
-            BigDouble passiveGain = ratePerSecond * seconds;
+            double offlineMultiplier = 0.05 + milkSpent[2].ToDouble() * 0.001;
+            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount) * 0.01 * pointGain * offlineMultiplier;
+            BigDouble passiveGain = ratePerSecond * trueSeconds;
+            passiveGain = ApplySoftCap(point, passiveGain);
             point += passiveGain;
 
             MessageBox.Show(
-                $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away.\n" +
-                $"Current offline multi: x{offlineMultiplier}."
+                $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away for {seconds}s.\n" +
+                $"Effective time was {trueSeconds}s\n" +
+                $"Current offline multi: x{offlineMultiplier}.",
+                "Offline progress"
             );
 
             UpdateUI();
@@ -607,25 +739,15 @@ namespace WinFormsApp1
 #if DEBUG
         private void buttonDebug_Click(object sender, EventArgs e)
         {
-            // Set last claim date to yesterday
-            lastMilkClaimDate = DateTime.Now.Date.AddDays(-1);
-
-            // Re-run the daily reward logic
-            ApplyUnlocks(new GameState
-            {
-                HasUnlockedGenerators = buttonGenerator.Visible,
-                LastMilkClaimDate = lastMilkClaimDate,
-                Milk = milk,
-                MilkStreak = milkStreak
-            });
-
-            // Optionally, update UI to reflect changes
+            milk *= 10000000000000000000;
+            SaveGame();
             UpdateUI();
         }
 #endif
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
-            var challengeWindow = new AscensionWindow(ascendCount, challengesCompleted);
+            int previousActiveChallengeIndex = activeChallengeIndex;
+            var challengeWindow = new AscensionWindow(ascendCount, challengesCompleted, activeChallengeIndex);
             var result = challengeWindow.ShowDialog();
             if (result == DialogResult.OK)
             {
@@ -633,14 +755,56 @@ namespace WinFormsApp1
                 SaveGame();
                 UpdateUI();
 
-                if (challengeWindow.ChallengeActive)
+                // Cancel challenge if requested
+                if (challengeWindow.ChallengeCancelled)
+                {
+                    activeChallengeIndex = -1;
+                    UpdateUI();
+                    SaveGame();
+                    MessageBox.Show("Challenge cancelled.", "Challenge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                // Only start a challenge if a new one was started
+                if (challengeWindow.ChallengeActive && challengeWindow.ActiveChallengeIndex != previousActiveChallengeIndex)
                 {
                     StartChallenge(challengeWindow.ActiveChallengeIndex);
                 }
             }
         }
+        // Protect/unprotect helpers (DPAPI)
+        private byte[] ProtectBytes(byte[] data)
+        {
+            try
+            {
+                var entropy = System.Text.Encoding.UTF8.GetBytes("FnuyIncrementalGame_v1"); // versioned entropy
+                return System.Security.Cryptography.ProtectedData.Protect(data, entropy, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private byte[] UnprotectBytes(byte[] data)
+        {
+            try
+            {
+                var entropy = System.Text.Encoding.UTF8.GetBytes("FnuyIncrementalGame_v1");
+                return System.Security.Cryptography.ProtectedData.Unprotect(data, entropy, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // SaveGame — serialize then protect before writing
         private void SaveGame()
         {
+#if DEBUG
+    // Do not save the game in debug build
+    return;
+#endif
             var state = new GameState
             {
                 Point = point,
@@ -652,12 +816,13 @@ namespace WinFormsApp1
                 AscensionPoints = ascensionPoints,
                 AscensionCount = ascendCount,
                 CooldownDuration = cooldownDuration,
-                LastSavedTime = DateTime.Now,
+                LastSavedTime = DateTime.UtcNow,
                 HasUnlockedPrestige = buttonPrestige.Visible,
                 HasUnlockedGenerators = buttonGenerator.Visible,
                 HasUnlockedAscension = buttonAscend.Visible,
                 HasAscended = buttonOpenAscensionShop.Visible,
                 AscChallenges = challengesCompleted,
+                HasUnlockedPremiumShop = hasUnlockedPremiumShop,
                 Milk = milk,
                 LastMilkClaimDate = lastMilkClaimDate,
                 MilkStreak = milkStreak,
@@ -668,51 +833,20 @@ namespace WinFormsApp1
             var settings = new JsonSerializerSettings();
             settings.Converters.Add(new BigDoubleConverter());
 
-            Directory.CreateDirectory(Path.GetDirectoryName(savePath));
             string json = JsonConvert.SerializeObject(state, settings);
-            File.WriteAllText(savePath, json);
+            byte[] plain = System.Text.Encoding.UTF8.GetBytes(json);
+            byte[] cipher = ProtectBytes(plain);
+
+            // If protection failed, fall back to writing plaintext (safer to preserve user data than to drop it)
+            Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+            if (cipher != null)
+                File.WriteAllBytes(savePath, cipher);
+            else
+                File.WriteAllText(savePath, json);
         }
 
-        private void ApplyUnlocks(GameState state)
-        {
-            buttonPrestige.Visible = state.HasUnlockedPrestige;
-            labelPrestigeCost.Visible = state.HasUnlockedPrestige;
-            labelUpgradeNote.Visible = !state.HasUnlockedPrestige;
-
-            buttonGenerator.Visible = state.HasUnlockedGenerators;
-            labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
-            labelSoftCap.Visible = state.HasUnlockedGenerators;
-            labelPrestigeInfo.Visible = state.HasUnlockedGenerators;
-            buttonPremiumShop.Visible = state.HasUnlockedGenerators;
-            // After loading state.HasUnlockedGenerators
-            if (state.HasUnlockedGenerators)
-            {
-                var today = DateTime.Now.Date;
-                var lastClaim = lastMilkClaimDate.Date;
-
-                if (lastClaim < today)
-                {
-                    // If yesterday, increment streak; if missed, reset to 1
-                    if (lastClaim == today.AddDays(-1))
-                        milkStreak++;
-                    else
-                        milkStreak = 1;
-
-                    int milkEarned = 9 + milkStreak + baseMilkUpgradeCount;
-                    milk += milkEarned;
-                    lastMilkClaimDate = today;
-                    MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    SaveGame();
-                }
-            }
-
-            buttonAscend.Visible = state.HasUnlockedAscension;
-            labelAscendCost.Visible = state.HasUnlockedAscension;
-
-            buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = state.HasAscended;
-        }
-
-        private void LoadGame()
+        // LoadGame — try to unprotect, fallback to plaintext, then deserialize
+        private async void LoadGame()
         {
             try
             {
@@ -722,20 +856,69 @@ namespace WinFormsApp1
                     return;
                 }
 
-                string json = File.ReadAllText(savePath);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    SaveGame();
-                    return;
-                }
-
+                byte[] fileBytes = File.ReadAllBytes(savePath);
                 var settings = new JsonSerializerSettings();
                 settings.Converters.Add(new BigDoubleConverter());
+
+                string json = null;
+                byte[] plain = UnprotectBytes(fileBytes);
+
+                if (plain != null)
+                {
+                    // Successfully decrypted (new protected format)
+                    json = System.Text.Encoding.UTF8.GetString(plain);
+                }
+                else
+                {
+                    // File is not a protected save (older plaintext format or corrupted).
+                    // Per new policy: plaintext saves from earlier versions are now invalid.
+                    // Back up the old file for manual recovery, inform the player, then create a fresh save.
+                    try
+                    {
+                        // Make a deterministic backup name, avoid overwriting existing backups
+                        string backupPath = savePath + ".plaintext-bak";
+                        if (File.Exists(backupPath))
+                            backupPath = savePath + $".plaintext-bak.{DateTime.UtcNow:yyyyMMddHHmmss}";
+
+                        File.Move(savePath, backupPath);
+
+                        MessageBox.Show(
+                            "Your old data will NOT CARRY OVER in this version.\nThere's a special bonus waiting after prestiging\n\n" +
+                            $"A backup of your old save has been created at:\n{backupPath}\n\n" +
+                            "The game will start a fresh save now.",
+                            "Haha get reset son",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
+
+                        // Create new protected save with default values
+                        SaveGame();
+                        return;
+                    }
+                    catch
+                    {
+                        // If backup fails for any reason, fall back to creating a fresh save to avoid leaving the app in an invalid state.
+                        try
+                        {
+                            MessageBox.Show(
+                                "An incompatible save was found and could not be backed up. The save will be reset to defaults.",
+                                "Incompatible Save",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning
+                            );
+                        }
+                        catch { }
+
+                        SaveGame();
+                        return;
+                    }
+                }
 
                 GameState state = JsonConvert.DeserializeObject<GameState>(json, settings);
                 if (state == null)
                     throw new Exception("Deserialized GameState is null");
 
+                // Restore all game state variables first
                 point = state.Point;
                 pointGain = state.PointMultiplier;
                 upgradeCount = state.UpgradeCount;
@@ -745,6 +928,7 @@ namespace WinFormsApp1
                 ascendCount = state.AscensionCount;
                 ascensionPoints = state.AscensionPoints;
                 cooldownDuration = state.CooldownDuration;
+                hasUnlockedPremiumShop = state.HasUnlockedPremiumShop;
                 milk = state.Milk;
                 lastMilkClaimDate = state.LastMilkClaimDate;
                 milkStreak = state.MilkStreak;
@@ -752,7 +936,7 @@ namespace WinFormsApp1
                 if (state.MilkSpent != null && state.MilkSpent.Length == 3)
                     milkSpent = state.MilkSpent;
                 else
-                    milkSpent = new int[3];
+                    milkSpent = new BigDouble[3];
                 if (state.AscChallenges != null && state.AscChallenges.Length == 4)
                     challengesCompleted = state.AscChallenges;
                 else
@@ -762,8 +946,12 @@ namespace WinFormsApp1
                 {
                     UnlockPrestigeFeature();
                 }
-                ApplyOfflineProgress(state.LastSavedTime);
-                ApplyUnlocks(state);
+
+                DateTime? serverTime = await GetServerUtcDateAsync();
+                if (serverTime != null)
+                    ApplyOfflineProgress(state.LastSavedTime, serverTime.Value);
+
+                ApplyUnlocks(state, serverTime);
                 UpdateUI();
             }
             catch (Exception ex)
@@ -786,7 +974,42 @@ namespace WinFormsApp1
                 UpdateUI();
             }
         }
+        private void ApplyUnlocks(GameState state, DateTime? serverTime)
+        {
+            buttonPrestige.Visible = state.HasUnlockedPrestige;
+            labelPrestigeCost.Visible = state.HasUnlockedPrestige;
+            labelUpgradeNote.Visible = !state.HasUnlockedPrestige;
 
+            buttonGenerator.Visible = state.HasUnlockedGenerators;
+            labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
+            labelSoftCap.Visible = state.HasUnlockedGenerators;
+            labelPrestigeInfo.Visible = state.HasUnlockedGenerators;
+            buttonPremiumShop.Visible = state.HasUnlockedGenerators;
+            buttonInfoDailyGain.Visible = state.HasUnlockedGenerators;
+            // After loading state.HasUnlockedGenerators
+            if (state.HasUnlockedGenerators && serverTime != null)
+            {
+                var today = serverTime.Value.Date;
+                var lastClaim = lastMilkClaimDate.Date;
+                if (lastClaim < today)
+                {
+                    if (lastClaim == today.AddDays(-1))
+                        milkStreak++;
+                    else
+                        milkStreak = 1;
+                    int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
+                    milk += milkEarned;
+                    lastMilkClaimDate = today;
+                    MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SaveGame();
+                }
+            }
+
+            buttonAscend.Visible = state.HasUnlockedAscension;
+            labelAscendCost.Visible = state.HasUnlockedAscension;
+
+            buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = state.HasAscended;
+        }
         private void UnlockPrestigeFeature()
         {
             buttonPrestige.Visible = true;
@@ -794,7 +1017,6 @@ namespace WinFormsApp1
             labelUpgradeNote.Visible = false;
             SaveGame();
         }
-
         private void UnlockGeneratorFeature()
         {
             buttonGenerator.Visible = true;
@@ -804,6 +1026,35 @@ namespace WinFormsApp1
             labelAscendCost.Visible = true;
             labelPrestigeInfo.Visible = true;
             buttonPremiumShop.Visible = true;
+            buttonInfoDailyGain.Visible = true;
+            // One-time premium shop unlock logic
+            if (!hasUnlockedPremiumShop)
+            {
+                hasUnlockedPremiumShop = true;
+                MessageBox.Show("Here's 10000 milk so you can progress faster in place of the lost data.\n"+
+                    "I'd recommend spending 950 in offline gain, 1000 in softcap reduction and the rest in points gain",
+                    "Progress loss compensation :)", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                milk += 10000;
+                SaveGame();
+
+                // Give today's milk daily reward
+                var today = DateTime.Now.Date;
+                var lastClaim = lastMilkClaimDate.Date;
+                if (lastClaim < today)
+                {
+                    if (lastClaim == today.AddDays(-1))
+                        milkStreak++;
+                    else
+                        milkStreak = 1;
+
+                    int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
+                    milk += milkEarned;
+                    lastMilkClaimDate = today;
+                    MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SaveGame();
+                }
+            }
+
             SaveGame();
         }
 
@@ -838,7 +1089,45 @@ namespace WinFormsApp1
                 point -= transcendCost;
                 transcendFlashTimer.Stop();
                 buttonTranscend.BackColor = Color.DarkViolet;
-                // Show the transcend window
+
+                // Reset everything like an ascension but then set ascend count back to 0
+                point = BigDouble.Zero;
+                pointGain = BigDouble.One;
+                upgradeCount = 0;
+                prestigeCount = 0;
+                generatorCount = 0;
+                generatorCost = new BigDouble(100);
+                cooldownDuration = 1000;
+
+                // Reset ascension-specific state
+                ascendCount = 0;
+                ascensionPoints = BigDouble.Zero;
+
+                // Clear active challenge and completed challenges
+                activeChallengeIndex = -1;
+                challengesCompleted = new bool[4];
+
+                // Milk-related data is NOT affected; instead increment daily streak and give today's milk
+                try
+                {
+                    var today = DateTime.Now.Date;
+                    // Increment streak regardless of last claim (as requested)
+                    milkStreak++;
+                    int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
+                    milk += milkEarned;
+                    lastMilkClaimDate = today;
+
+                    MessageBox.Show($"Transcend complete! You received {FormatNumbers(milkEarned)} milk as a bonus reward.\nCurrent streak: {milkStreak}", "Transcend Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch
+                {
+                    // Swallow any unexpected errors related to dates/formatting to avoid crashing on transcend
+                }
+
+                SaveGame();
+                UpdateUI();
+
+                // Show the transcend window (optional UI)
                 var window = new TranscendWindow();
                 window.ShowDialog();
                 UpdateUI();
@@ -864,7 +1153,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if ( e.Button == MouseButtons.Left )
             {
                 dragging = true;
                 dragCursorPoint = Cursor.Position;
@@ -874,7 +1163,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseMove(object sender, MouseEventArgs e)
         {
-            if (dragging)
+            if ( dragging )
             {
                 Point diff = Point.Subtract(Cursor.Position, new Size(dragCursorPoint));
                 this.Location = Point.Add(dragFormPoint, new Size(diff));
@@ -883,7 +1172,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if ( e.Button == MouseButtons.Left )
             {
                 dragging = false;
             }
@@ -915,13 +1204,12 @@ namespace WinFormsApp1
         {
             get
             {
+                // Challenge 2 or 3 active: fixed 10 seconds
+                if (activeChallengeIndex == 2 || activeChallengeIndex == 3)
+                    return 10000;
                 int reductions = ascendCount / 2;
                 double reductionPercent = reductions * 0.05;
                 double effective = cooldownDuration * (1.0 - reductionPercent);
-
-                // Challenge 2: increase to 10 seconds
-                if (activeChallengeIndex == 2 || activeChallengeIndex == 3)
-                    effective = 10000;
 
                 // Challenge 2 completed: decrease by 0.1s (100ms)
                 if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
@@ -935,6 +1223,9 @@ namespace WinFormsApp1
             var cost = GetAscendCost();
             bool canAscend = point >= cost;
 
+            // Snapshot current cooldown to restore after challenge is completed
+            prevCooldownDurationForChallenge = cooldownDuration;
+
             // Reset everything as in ascension
             point = BigDouble.Zero;
             pointGain = BigDouble.One;
@@ -943,6 +1234,13 @@ namespace WinFormsApp1
             generatorCount = 0;
             generatorCost = new BigDouble(100);
             cooldownDuration = 1000;
+
+            // Reset cooldown state and timers so clicks work normally
+            isCooldown = false;
+            cooldownTimer.Stop();
+            cooldownElapsed = 0;
+            labelCooldown.Text = "";
+            autoClickElapsed = 0;
 
             if (canAscend)
             {
@@ -971,12 +1269,12 @@ namespace WinFormsApp1
             UpdateUI();
         }
         // upgradeIndex: 0, 1, 2; amount: how much milk to spend
-        private bool SpendMilkOnUpgrade(int upgradeIndex, int amount)
+        private bool SpendMilkOnUpgrade(int upgradeIndex, BigDouble amount)
         {
             if (upgradeIndex == 3) // Base milk gain upgrade
             {
                 int cost = 10 + baseMilkUpgradeCount * 2;
-                if (milk >= cost && amount == 1)
+                if (milk >= cost && amount == BigDouble.One)
                 {
                     milk -= cost;
                     baseMilkUpgradeCount++;
@@ -1000,6 +1298,203 @@ namespace WinFormsApp1
                 return false;
             }
             return false;
+        }
+        private void CheckChallengeCompletion()
+        {
+            if (activeChallengeIndex == -1)
+                return;
+
+            bool completed = false;
+            switch (activeChallengeIndex)
+            {
+                case 0:
+                    if (point >= 2_500_000)
+                        completed = true;
+                    break;
+                case 1:
+                    if (prestigeCount >= 8)
+                        completed = true;
+                    break;
+                case 2:
+                    if (generatorCount >= 2)
+                        completed = true;
+                    break;
+                case 3:
+                    if (point >= 25_000_000)
+                        completed = true;
+                    break;
+            }
+            if (completed)
+            {
+                challengesCompleted[activeChallengeIndex] = true;
+                int completedIndex = activeChallengeIndex;
+                activeChallengeIndex = -1;
+
+                // Restore cooldownDuration to pre-challenge snapshot if available
+                if (prevCooldownDurationForChallenge.HasValue)
+                {
+                    cooldownDuration = prevCooldownDurationForChallenge.Value;
+                    prevCooldownDurationForChallenge = null;
+                }
+
+                // Ensure pointGain is recalculated now that challenge modifiers changed
+                RecalculatePointGain();
+
+                // If point is exactly zero, kick-start with one so gains show up immediately
+                if (point == BigDouble.Zero)
+                    point = BigDouble.One;
+
+                // Reset cooldown UI state to reflect restored cooldown duration
+                isCooldown = false;
+                cooldownTimer.Stop();
+                cooldownElapsed = 0;
+                labelCooldown.Text = "";
+                autoClickElapsed = 0;
+
+                UpdateUI();
+                SaveGame();
+                MessageBox.Show($"Challenge {completedIndex + 1} completed!", "Challenge Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private BigDouble ApplySoftCap(BigDouble current, BigDouble gain)
+        {
+            var newTotal = current + gain;
+            var threshold = GetSoftCapThreshold();
+            if (newTotal <= threshold)
+                return gain;
+
+            // Calculate a non-zero divisor for the new total
+            var divisor = GetSoftCapDivisor(newTotal);
+            if (divisor <= BigDouble.Zero)
+                return gain; // safety: don't kill gain
+
+            return gain / divisor;
+        }
+
+
+        // Add event handler stubs for designer compatibility
+        private void buttonMinimize_MouseEnter(object sender, EventArgs e) => buttonMinimize.BackColor = Color.FromArgb(64, 64, 64);
+        private void buttonMinimize_MouseLeave(object sender, EventArgs e) => buttonMinimize.BackColor = Color.FromArgb(32, 32, 32);
+        private void buttonMinimize_Click(object sender, EventArgs e) => this.WindowState = FormWindowState.Minimized;
+        private void buttonClose_MouseEnter(object sender, EventArgs e) => buttonClose.BackColor = Color.FromArgb(64, 64, 64);
+        private void buttonClose_MouseLeave(object sender, EventArgs e) => buttonClose.BackColor = Color.FromArgb(32, 32, 32);
+        private void buttonClose_Click(object sender, EventArgs e) => this.Close();
+        private void panelTitleBar_Resize(object sender, EventArgs e)
+        {
+            buttonMinimize.Location = new Point(panelTitleBar.Width - 80, 0);
+            buttonClose.Location = new Point(panelTitleBar.Width - 40, 0);
+        }
+
+        private void UpdateAutoclickBar(int percent)
+        {
+            // Clamp 0..100
+            if (percent < 0) percent = 0;
+            if (percent > 100) percent = 100;
+            int newWidth = (int)Math.Round(autoclickBarBg.Width * (percent / 100.0));
+            autoclickBarFill.Width = Math.Max(0, Math.Min(newWidth, autoclickBarBg.Width));
+        }
+        private async void buttonInfoDailyGain_Click(object sender, EventArgs e)
+        {
+            // Compute tomorrow's milk using same formula used elsewhere
+            int tomorrowMilk = 100 + milkStreak * 10 + baseMilkUpgradeCount * 10;
+
+            // Get server time (fallback to UTC)
+            DateTime serverNow = DateTime.UtcNow;
+            try
+            {
+                var serverTime = await GetServerUtcDateAsync();
+                if (serverTime.HasValue)
+                    serverNow = serverTime.Value;
+            }
+            catch
+            {
+                serverNow = DateTime.UtcNow;
+            }
+
+            // Calculate server offset and next reset time (server midnight)
+            TimeSpan serverOffset = serverNow - DateTime.UtcNow;
+            DateTime nextReset = serverNow.Date.AddDays(1);
+
+            using var infoForm = new Form
+            {
+                Text = "Daily Milk Gain Info",
+                Size = new Size(480, 260),
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var lblInfo = new Label
+            {
+                Text = "Your daily milk gain is a base amount plus your current login streak.\n\n" +
+                       "Base gain: 10 x number of milk gain upgrades purchased + 100\n" +
+                       "Streak bonus: +10 milk per consecutive day logged in\n\n" +
+                       "Your streak resets if you miss a day.",
+                Location = new Point(12, 12),
+                Size = new Size(440, 120),
+                Font = new Font("Segoe UI", 9F)
+            };
+            infoForm.Controls.Add(lblInfo);
+
+            var lblTomorrow = new Label
+            {
+                Text = $"Your milk gain for tomorrow: {tomorrowMilk}",
+                Location = new Point(12, 135),
+                Size = new Size(440, 22),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold)
+            };
+            infoForm.Controls.Add(lblTomorrow);
+
+            var lblCountdown = new Label
+            {
+                Text = "",
+                Location = new Point(12, 160),
+                Size = new Size(440, 40),
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.DarkBlue
+            };
+            infoForm.Controls.Add(lblCountdown);
+
+            var btnClose = new Button
+            {
+                Text = "Close",
+                DialogResult = DialogResult.OK,
+                Size = new Size(90, 30),
+                Location = new Point(infoForm.ClientSize.Width - 110, infoForm.ClientSize.Height - 50),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            };
+            infoForm.Controls.Add(btnClose);
+
+            // Timer for updating countdown (declare after nextReset so lambda can capture it)
+            var countdownTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+            countdownTimer.Tick += (s, ev) =>
+            {
+                DateTime currentServer = DateTime.UtcNow + serverOffset;
+                TimeSpan remaining = nextReset - currentServer;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    // advance to next day
+                    nextReset = nextReset.AddDays(1);
+                    remaining = nextReset - currentServer;
+                }
+
+                string remainingText;
+                if (remaining.TotalDays >= 1)
+                    remainingText = string.Format("{0}d {1:00}h {2:00}m {3:00}s", (int)remaining.TotalDays, remaining.Hours, remaining.Minutes, remaining.Seconds);
+                else
+                    remainingText = string.Format("{0:00}h {1:00}m {2:00}s", remaining.Hours, remaining.Minutes, remaining.Seconds);
+
+                lblCountdown.Text = $"Time until daily reset (server): {remainingText}\nServer time: {currentServer:yyyy-MM-dd HH:mm:ss} UTC";
+            };
+
+            infoForm.FormClosing += (s, ev) => countdownTimer.Stop();
+            countdownTimer.Start();
+
+            infoForm.ShowDialog(this);
+
+            countdownTimer.Stop();
         }
     }
 }
