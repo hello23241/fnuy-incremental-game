@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Utils\NewFolder\**" />
     <EmbeddedResource Remove="Utils\NewFolder\**" />
     <None Remove="Utils\NewFolder\**" />
@@ -31,14 +35,6 @@
     <EmbeddedResource Include="Resources\NianBean.ico">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.7.115">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>

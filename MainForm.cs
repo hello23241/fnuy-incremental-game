@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Globalization;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
+using System.ComponentModel;
 
 namespace WinFormsApp1
 {
@@ -70,6 +71,15 @@ namespace WinFormsApp1
         public MainForm()
         {
             InitializeComponent();
+
+            // When the WinForms designer instantiates this form at design-time, many runtime operations
+            // (network calls, file IO, timers, DPAPI) can throw and prevent the designer from loading.
+            // Detect design-time and skip runtime-only initialization.
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+            {
+                return;
+            }
+
             autoclickBarBg = new Panel
             {
                 BackColor = Color.FromArgb(48, 48, 48),
@@ -731,6 +741,11 @@ namespace WinFormsApp1
         // Save on close
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+            {
+                base.OnFormClosing(e);
+                return;
+            }
             SaveGame();
             MessageBox.Show("Your progress has been saved!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
             base.OnFormClosing(e);
