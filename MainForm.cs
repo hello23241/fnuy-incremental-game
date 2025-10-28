@@ -60,6 +60,10 @@ namespace WinFormsApp1
         private bool isCooldown = false;
         private int autoClickElapsed = 0; // ms
 
+        // New: store colors for the click button to restore after cooldown
+        private Color defaultClickButtonColor;
+        private Color defaultClickButtonForeColor;
+
         // Save path
         private readonly string savePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -79,6 +83,57 @@ namespace WinFormsApp1
             {
                 return;
             }
+
+            // Ensure button shows custom BackColor and bold text
+            button1.UseVisualStyleBackColor = false;
+            button1.Font = new Font(button1.Font, button1.Font.Style | FontStyle.Bold);
+            defaultClickButtonColor = button1.BackColor;
+            defaultClickButtonForeColor = button1.ForeColor;
+            // If you expect white by default, enforce it here
+            button1.BackColor = Color.White;
+
+            // Remove debug button entirely in Release builds
+#if DEBUG
+            buttonDebug.Visible = true;
+            try { buttonDebug.Click += buttonDebug_Click; } catch { }
+#else
+            try
+            {
+                if (buttonDebug != null)
+                {
+                    buttonDebug.Visible = false;
+                    buttonDebug.Enabled = false;
+                    Controls.Remove(buttonDebug);
+                    buttonDebug.Dispose();
+                    buttonDebug = null;
+                }
+            }
+            catch { }
+#endif
+
+            // Register SFX based on actual resources found
+            try
+            {
+                // Coin/gain (ensure coin is registered by key)
+                AudioManagerNAudio.RegisterFromEmbeddedResource("gain", "Resources.coin.wav");
+                // Upgrade (flexible)
+                AudioManagerNAudio.RegisterFromEmbeddedResource("upgrade");
+                // Prestige
+                AudioManagerNAudio.RegisterFromEmbeddedResource("prestige", "Resources.prestige.aif");
+                // Ascend
+                AudioManagerNAudio.RegisterFromEmbeddedResource("ascend", "Resources.ascend.mp3");
+                // Challenge lifecycle
+                AudioManagerNAudio.RegisterFromEmbeddedResource("challengecomplete", "Resources.challengecomplete.mp3");
+                AudioManagerNAudio.RegisterFromEmbeddedResource("challengecancelled", "Resources.challengecancelled.aif");
+                AudioManagerNAudio.RegisterFromEmbeddedResource("challengestart", "Resources.challengestarted.wav");
+                AudioManagerNAudio.RegisterFromEmbeddedResource("challengestart", "Resources.levelupTRANS.aif");
+                AudioManagerNAudio.RegisterFromEmbeddedResource("challengestart", "Resources.completetask.mp3");
+                // Milk earned
+                AudioManagerNAudio.RegisterFromEmbeddedResource("milkearned", "Resources.milkearned.wav");
+                // Transcend
+                AudioManagerNAudio.RegisterFromEmbeddedResource("transcend", "Resources.transcend.wav");
+            }
+            catch { }
 
             autoclickBarBg = new Panel
             {
@@ -101,13 +156,12 @@ namespace WinFormsApp1
             autoClickTimer = new System.Windows.Forms.Timer();
             autoClickTimer.Tick += AutoClickTimer_Tick;
             autoClickTimer.Enabled = false;
-#if DEBUG
-            buttonDebug.Visible = true;
-#else
-        buttonDebug.Visible = false;
-#endif
+
             this.Text = "Myrtle incremental";
             this.Icon = Properties.Resources.NianBean;
+
+            // Wire events that can cause designer issues only at runtime
+            try { buttonUpgrade.MouseDown += buttonUpgrade_MouseDown; } catch { }
 
             //Transcend flash timer
             transcendFlashTimer = new System.Windows.Forms.Timer();
@@ -129,13 +183,9 @@ namespace WinFormsApp1
             buttonAscend.Visible = labelAscendCost.Visible = buttonOpenAscensionShop.Visible = false;
             buttonTranscend.Visible = labelTranscendCost.Visible = buttonPremiumShop.Visible = false;
             labelChallengeState.Visible = buttonInfoDailyGain.Visible = false;
-#if DEBUG
-            buttonDebug.Visible = true;
-            buttonDebug.Click += buttonDebug_Click;
-#endif
 
             LoadGame();
-            labelCooldown.Text = "";
+            // removed any labelCooldown.Text usage
             CheckForUpdates();
             UpdateUI();
         }
@@ -262,18 +312,6 @@ namespace WinFormsApp1
             if (buttonPremiumShop.Text != $"🥛 {formattedMilk}")
                 buttonPremiumShop.Text = $"🥛 {formattedMilk}";
 
-            if (upgradeCount != 0)
-            {
-                string upgradeNoteText = $"Upgrade count: {EffectiveUpgradeCount}";
-                if (!labelUpgradeNote.Visible)
-                    labelUpgradeNote.Visible = true;
-            }
-            else
-            {
-                if (labelUpgradeNote.Visible)
-                    labelUpgradeNote.Visible = false;
-            }
-
             // Transcend button logic
             bool canTranscend = point >= transcendCost;
             if (buttonTranscend.Enabled != canTranscend)
@@ -375,12 +413,16 @@ namespace WinFormsApp1
             BigDouble gain = pointGain * AscensionMultiplier;
             gain = ApplySoftCap(point, gain);
             point += gain;
+            // Play gain sound (slightly reduced)
+            AudioManagerNAudio.Play("gain", 0.75f);
             UpdateUI();
             isCooldown = true;
             cooldownElapsed = 0;
             cooldownTimer.Interval = 50; // Always 50ms for smooth updates
             cooldownTimer.Start();
-            labelCooldown.Text = $"Cooldown: {EffectiveCooldownDuration / 1000.0:F2}s";
+            // Visual: set button red with white text while on cooldown
+            button1.BackColor = Color.Red;
+            button1.ForeColor = Color.White;
             CheckChallengeCompletion();
         }
         private void CooldownTimer_Tick(object sender, EventArgs e)
@@ -389,14 +431,18 @@ namespace WinFormsApp1
             int remaining = EffectiveCooldownDuration - cooldownElapsed;
             if (remaining > 0)
             {
-                labelCooldown.Text = $"Cooldown: {remaining / 1000.0:F2}s";
+                // keep red/white during cooldown
+                if (button1.BackColor != Color.Red) button1.BackColor = Color.Red;
+                if (button1.ForeColor != Color.White) button1.ForeColor = Color.White;
             }
             else
             {
                 cooldownTimer.Stop();
                 isCooldown = false;
                 cooldownElapsed = 0;
-                labelCooldown.Text = ""; // Clear when ready
+                // restore button colors when cooldown ends
+                button1.BackColor = Color.White;
+                button1.ForeColor = defaultClickButtonForeColor;
             }
         }
         private void AutoClickTimer_Tick(object sender, EventArgs e)
@@ -413,6 +459,8 @@ namespace WinFormsApp1
                     BigDouble gain = pointGain * AscensionMultiplier;
                     gain = ApplySoftCap(point, gain);
                     point += gain;
+                    // Play gain sound for autoclick (slightly reduced)
+                    AudioManagerNAudio.Play("gain", 0.7f);
                     autoClickElapsed = 0;
                     UpdateUI();
                 }
@@ -462,6 +510,10 @@ namespace WinFormsApp1
                     cooldownDuration = 500;
                 }
                 RecalculatePointGain();
+                // Update the upgrade note to reflect current upgrades
+                labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
+                // Play upgrade sfx
+                AudioManagerNAudio.Play("upgrade", 0.9f);
                 UpdateUI();
             }
         }
@@ -497,6 +549,10 @@ namespace WinFormsApp1
                     cooldownDuration = 500;
                 }
                 RecalculatePointGain();
+                // Update the upgrade note to reflect current upgrades after bulk purchase
+                labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
+                // Play upgrade sfx
+                AudioManagerNAudio.Play("upgrade", 0.9f);
                 UpdateUI();
                 SaveGame();
             }
@@ -536,6 +592,8 @@ namespace WinFormsApp1
                 upgradeCount = 0;
                 pointGain = BigDouble.One;
                 prestigeCount++;
+                // Play prestige sfx
+                AudioManagerNAudio.Play("prestige", 0.9f);
                 UnlockGeneratorFeature();
                 UpdateUI();
                 CheckChallengeCompletion();
@@ -590,6 +648,8 @@ namespace WinFormsApp1
                 BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier;
                 passiveGain = ApplySoftCap(point, passiveGain);
                 point += passiveGain;
+                // Play gain sound for generator passive tick (lower volume)
+                AudioManagerNAudio.Play("gain", 0.5f);
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
             }
@@ -608,6 +668,8 @@ namespace WinFormsApp1
                 prestigeCount = 0;
                 ascendCount++;
                 ascensionPoints++;
+                // Play ascend sfx
+                AudioManagerNAudio.Play("ascend", 0.9f);
                 UnlockAscensionFeature();
                 UpdateUI();
             }
@@ -687,7 +749,7 @@ namespace WinFormsApp1
                 "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg",
                 "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag",
                 "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig",
-                "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqig", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg",
+                "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqag", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg",
                 "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg",
                 "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg",
                 "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog",
@@ -727,6 +789,8 @@ namespace WinFormsApp1
             passiveGain = ApplySoftCap(point, passiveGain);
             point += passiveGain;
 
+            // Play gain sound once for offline grant
+            AudioManagerNAudio.Play("gain", 0.8f);
             MessageBox.Show(
                 $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away for {seconds}s.\n" +
                 $"Effective time was {trueSeconds}s\n" +
@@ -776,6 +840,8 @@ namespace WinFormsApp1
                     activeChallengeIndex = -1;
                     UpdateUI();
                     SaveGame();
+                    // Play cancel sfx
+                    AudioManagerNAudio.Play("challengecancelled", 0.9f);
                     MessageBox.Show("Challenge cancelled.", "Challenge", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -989,11 +1055,12 @@ namespace WinFormsApp1
                 UpdateUI();
             }
         }
+
         private void ApplyUnlocks(GameState state, DateTime? serverTime)
         {
             buttonPrestige.Visible = state.HasUnlockedPrestige;
             labelPrestigeCost.Visible = state.HasUnlockedPrestige;
-            labelUpgradeNote.Visible = !state.HasUnlockedPrestige;
+            // Removed labelUpgradeNote.Visible manipulation; preserve default text unless purchases happen
 
             buttonGenerator.Visible = state.HasUnlockedGenerators;
             labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
@@ -1015,6 +1082,8 @@ namespace WinFormsApp1
                     int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
                     milk += milkEarned;
                     lastMilkClaimDate = today;
+                    // Play milk earned sfx
+                    AudioManagerNAudio.Play("milkearned", 0.95f);
                     MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     SaveGame();
                 }
@@ -1025,11 +1094,12 @@ namespace WinFormsApp1
 
             buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = state.HasAscended;
         }
+
         private void UnlockPrestigeFeature()
         {
             buttonPrestige.Visible = true;
             labelPrestigeCost.Visible = true;
-            labelUpgradeNote.Visible = false;
+            // Removed labelUpgradeNote.Visible = false; keep note text as-is; it will change on purchase
             SaveGame();
         }
         private void UnlockGeneratorFeature()
@@ -1050,6 +1120,8 @@ namespace WinFormsApp1
                     "I'd recommend spending 950 in offline gain, 1000 in softcap reduction and the rest in points gain",
                     "Progress loss compensation :)", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 milk += 10000;
+                // Play milk earned sfx for compensation
+                AudioManagerNAudio.Play("milkearned", 0.95f);
                 SaveGame();
 
                 // Give today's milk daily reward
@@ -1065,6 +1137,8 @@ namespace WinFormsApp1
                     int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
                     milk += milkEarned;
                     lastMilkClaimDate = today;
+                    // Play milk earned sfx for daily reward
+                    AudioManagerNAudio.Play("milkearned", 0.95f);
                     MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     SaveGame();
                 }
@@ -1082,7 +1156,7 @@ namespace WinFormsApp1
         private void LogCrash(Exception ex)
         {
             string crashLogPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Environment.SpecialFolder.LocalApplicationData.ToString(),
                 "FnuyIncrementalGame",
                 "crashlog.txt"
             );
@@ -1102,6 +1176,8 @@ namespace WinFormsApp1
             if (point >= transcendCost)
             {
                 point -= transcendCost;
+                // Play transcend sfx
+                AudioManagerNAudio.Play("transcend", 0.95f);
                 transcendFlashTimer.Stop();
                 buttonTranscend.BackColor = Color.DarkViolet;
 
@@ -1131,6 +1207,8 @@ namespace WinFormsApp1
                     int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
                     milk += milkEarned;
                     lastMilkClaimDate = today;
+                    // Play milk earned sfx for transcend reward
+                    AudioManagerNAudio.Play("milkearned", 0.95f);
 
                     MessageBox.Show($"Transcend complete! You received {FormatNumbers(milkEarned)} milk as a bonus reward.\nCurrent streak: {milkStreak}", "Transcend Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1147,19 +1225,6 @@ namespace WinFormsApp1
                 window.ShowDialog();
                 UpdateUI();
             }
-        }
-        // Empty event handlers (if not used, consider removing from designer)
-        private void labelGeneratorInfo_Click(object sender, EventArgs e) { }
-        private void labelPrestigeCost_Click(object sender, EventArgs e) { }
-
-        private void labelPointsPerSecond_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void labelSoftCap_Click(object sender, EventArgs e)
-        {
-
         }
 
         private bool dragging = false;
@@ -1191,26 +1256,6 @@ namespace WinFormsApp1
             {
                 dragging = false;
             }
-        }
-
-        private void labelPoint_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void labelPointGain_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void labelUpgradeNote_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void labelPrestigeInfo_Click(object sender, EventArgs e)
-        {
-
         }
 
         private double AscensionMultiplier => Math.Pow(1.1, ascendCount);
@@ -1254,7 +1299,9 @@ namespace WinFormsApp1
             isCooldown = false;
             cooldownTimer.Stop();
             cooldownElapsed = 0;
-            labelCooldown.Text = "";
+            // restore button colors when challenge starts
+            button1.BackColor = Color.White;
+            button1.ForeColor = defaultClickButtonForeColor;
             autoClickElapsed = 0;
 
             if (canAscend)
@@ -1267,6 +1314,9 @@ namespace WinFormsApp1
             UnlockAscensionFeature();
             UpdateUI();
             SaveGame();
+
+            // Play challenge start sfx
+            AudioManagerNAudio.Play("challengestart", 0.9f);
 
             if (canAscend)
             {
@@ -1363,11 +1413,15 @@ namespace WinFormsApp1
                 isCooldown = false;
                 cooldownTimer.Stop();
                 cooldownElapsed = 0;
-                labelCooldown.Text = "";
+                // restore button colors when challenge completes
+                button1.BackColor = Color.White;
+                button1.ForeColor = defaultClickButtonForeColor;
                 autoClickElapsed = 0;
 
                 UpdateUI();
                 SaveGame();
+                // Play completion sfx
+                AudioManagerNAudio.Play("challengecomplete", 0.95f);
                 MessageBox.Show($"Challenge {completedIndex + 1} completed!", "Challenge Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }

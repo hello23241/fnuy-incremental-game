@@ -80,7 +80,6 @@
             labelPoint.TabIndex = 2;
             labelPoint.Text = "Points: 10000000";
             labelPoint.TextAlign = ContentAlignment.MiddleCenter;
-            labelPoint.Click += labelPoint_Click;
             // 
             // buttonUpgrade
             // 
@@ -92,7 +91,6 @@
             buttonUpgrade.UseVisualStyleBackColor = true;
             buttonUpgrade.Click += buttonUpgrade_Click;
             // Support right-click buy-max when wired in code-behind (handler exists in MainForm.cs)
-            buttonUpgrade.MouseDown += buttonUpgrade_MouseDown;
             // 
             // labelUpgradeCost
             // 
@@ -123,7 +121,6 @@
             labelPrestigeCost.TabIndex = 7;
             labelPrestigeCost.Text = "Prestige Cost: 10000000";
             labelPrestigeCost.TextAlign = ContentAlignment.MiddleLeft;
-            labelPrestigeCost.Click += labelPrestigeCost_Click;
             // 
             // labelUpgradeInfo
             // 
@@ -174,7 +171,6 @@
             labelPrestigeInfo.TabIndex = 13;
             labelPrestigeInfo.Text = "increases the factor of upgrade by 0.02";
             labelPrestigeInfo.TextAlign = ContentAlignment.MiddleLeft;
-            labelPrestigeInfo.Click += labelPrestigeInfo_Click;
             // 
             // buttonGenerator
             // 
@@ -195,7 +191,6 @@
             labelUpgradeNote.TabIndex = 12;
             labelUpgradeNote.Text = "Half the cooldown on first purchase";
             labelUpgradeNote.TextAlign = ContentAlignment.MiddleLeft;
-            labelUpgradeNote.Click += labelUpgradeNote_Click;
             // 
             // labelGeneratorInfo
             // 
@@ -206,7 +201,6 @@
             labelGeneratorInfo.TabIndex = 15;
             labelGeneratorInfo.Text = "Generators: 10 | Cost: 10000000 | Every generators 10x your current passive gain after the first";
             labelGeneratorInfo.TextAlign = ContentAlignment.MiddleLeft;
-            labelGeneratorInfo.Click += labelGeneratorInfo_Click;
             // 
             // labelSoftCap
             // 
@@ -217,7 +211,6 @@
             labelSoftCap.Size = new Size(429, 20);
             labelSoftCap.TabIndex = 0;
             labelSoftCap.Text = "Current points is over 10000000, gain is divided by 10000000";
-            labelSoftCap.Click += labelSoftCap_Click;
             // 
             // labelPointGain
             // 
@@ -229,7 +222,6 @@
             labelPointGain.Size = new Size(147, 20);
             labelPointGain.TabIndex = 99;
             labelPointGain.Text = "Point Gain: 10000000";
-            labelPointGain.Click += labelPointGain_Click;
             // 
             // labelPointsPerSecond
             // 
@@ -240,7 +232,6 @@
             labelPointsPerSecond.TabIndex = 16;
             labelPointsPerSecond.Text = "Points/second: 1000000";
             labelPointsPerSecond.TextAlign = ContentAlignment.MiddleLeft;
-            labelPointsPerSecond.Click += labelPointsPerSecond_Click;
             // 
             // panelTitleBar
             // 
