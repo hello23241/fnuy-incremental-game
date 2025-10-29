@@ -294,7 +294,7 @@ namespace WinFormsApp1
                          BigDouble currentSpent = milkSpent != null && milkSpent.Length > 2 ? milkSpent[2] : BigDouble.Zero;
                          if (currentSpent + amount > new BigDouble(950))
                          {
-                             MessageBox.Show("You can only spend up to 950 milk on Boost 3.", "Limit Reached");
+                             MessageBox.Show("You can only spend up to 950 milk on Offline Boost Gain.", "Limit Reached");
                              return;
                          }
                      }

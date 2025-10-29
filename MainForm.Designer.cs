@@ -90,7 +90,6 @@
             buttonUpgrade.Text = "Upgrade";
             buttonUpgrade.UseVisualStyleBackColor = true;
             buttonUpgrade.Click += buttonUpgrade_Click;
-            // Support right-click buy-max when wired in code-behind (handler exists in MainForm.cs)
             // 
             // labelUpgradeCost
             // 
@@ -343,7 +342,7 @@
             // 
             labelChallengeState.AutoSize = true;
             labelChallengeState.ForeColor = Color.Red;
-            labelChallengeState.Location = new Point(273, 63);
+            labelChallengeState.Location = new Point(273, 47);
             labelChallengeState.Name = "labelChallengeState";
             labelChallengeState.Size = new Size(103, 15);
             labelChallengeState.TabIndex = 202;

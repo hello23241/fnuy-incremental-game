@@ -18,7 +18,7 @@ namespace WinFormsApp1
         private readonly Point autoclickBarLocation = new Point(188, 118);
         private readonly Size autoclickBarSize = new Size(100, 23);
         // Core game state
-        private BigDouble point = new BigDouble(0);
+        private BigDouble point = new BigDouble(10000);
         private BigDouble pointGain = BigDouble.One;
         private BigDouble PrestigeIncrement = new BigDouble(4);
         private BigDouble generatorCost = new BigDouble(100);
@@ -280,7 +280,7 @@ namespace WinFormsApp1
             var ascendCost = GetAscendCost();
 
             var formattedPoint = FormatNumbers(point);
-            var formattedGain = FormatNumbers(pointGain / softCapDivisor);
+            var formattedGain = softCapDivisor == 0 ? "0" : FormatNumbers(pointGain / softCapDivisor);
             var formattedUpgradeCost = FormatNumbers(upgradeCost);
             var formattedPrestigeCost = FormatNumbers(prestigeCost);
             var formattedAscendCost = FormatNumbers(ascendCost);
@@ -369,7 +369,7 @@ namespace WinFormsApp1
                         challengeText += "\nPoint gain interval 10s";
                         break;
                     case 3:
-                        challengeText += "\nReduced point gain, prestige effectiveness and increased cooldown";
+                        challengeText += "\nReduced point gain,\nprestige effectiveness\nand increased cooldown";
                         break;
                 }
                 if (!labelChallengeState.Visible)
@@ -455,14 +455,16 @@ namespace WinFormsApp1
                 int percent = (int)(100L * autoClickElapsed / autoClickInterval);
                 if (autoClickElapsed >= autoClickInterval)
                 {
-                    UpdateAutoclickBar(100); // show full before reset
+                    // Show full bar before resetting
+                    UpdateAutoclickBar(100);
                     BigDouble gain = pointGain * AscensionMultiplier;
                     gain = ApplySoftCap(point, gain);
                     point += gain;
                     // Play gain sound for autoclick (slightly reduced)
                     AudioManagerNAudio.Play("gain", 0.7f);
-                    autoClickElapsed = 0;
+                    // Important: update UI before resetting elapsed so the bar reaches 100% visibly
                     UpdateUI();
+                    autoClickElapsed = 0;
                 }
                 else
                 {
@@ -478,15 +480,16 @@ namespace WinFormsApp1
             if (divisor == 0)
             {
                 pointGain = BigDouble.Zero;
-                point = BigDouble.Min(point, GetSoftCapThreshold() * 10_000);
+                // Clamp to hard cap: 1000x soft cap
+                point = BigDouble.Min(point, GetSoftCapThreshold() * 1000);
                 return;
             }
             double prestigeEffect = GetPrestigeEffect();
             double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 3 : 1.0;
-            // Challenge 0: Point gain is divided by 10
+            // Challenge 0: Point gain is divided by 5
             double challengeDebuff = 1.0;
             if (activeChallengeIndex == 0 || activeChallengeIndex == 3)
-                challengeDebuff /= 10.0;
+                challengeDebuff /= 5.0;
 
             pointGain = (BigDouble.One + EffectiveUpgradeCount * (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor))
                 * challenge0Multi * challengeDebuff *
@@ -518,311 +521,105 @@ namespace WinFormsApp1
             }
         }
 
-        // Right-click handler: if player has >=5 ascensions, buy max upgrades on right-click
+        // Right-click handler: if player has >=3 ascensions, offer Buy Max menu
         private void buttonUpgrade_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Right)
                 return;
 
-            if (ascendCount < 5)
-                return; // feature unlocks at 5 ascensions
+            if (ascendCount < 3)
+                return; // feature unlocks at 3 ascensions
 
-            // Buy as many upgrades as possible
-            bool purchasedAny = false;
-            while (true)
+            var menu = new ContextMenuStrip();
+            var buyMaxItem = new ToolStripMenuItem("Buy Max Upgrades");
+            buyMaxItem.Click += (s, ev) =>
             {
-                var cost = GetUpgradeCost();
-                if (point < cost)
-                    break;
-                point -= cost;
-                upgradeCount++;
-                purchasedAny = true;
-                // Prevent infinite loop in case GetUpgradeCost misbehaves
-                // (cost should increase each iteration)
-            }
-
-            if (purchasedAny)
-            {
-                if (cooldownDuration == 1000)
+                if (BuyMaxUpgrades())
                 {
-                    UnlockPrestigeFeature();
-                    cooldownDuration = 500;
+                    // Play upgrade sfx
+                    AudioManagerNAudio.Play("upgrade", 0.9f);
+                    UpdateUI();
+                    SaveGame();
                 }
-                RecalculatePointGain();
-                // Update the upgrade note to reflect current upgrades after bulk purchase
-                labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
-                // Play upgrade sfx
-                AudioManagerNAudio.Play("upgrade", 0.9f);
-                UpdateUI();
-                SaveGame();
-            }
-        }
-
-        private void UpdateUpgradeInfoLabel()
-        {
-            double prestigeEffect = GetPrestigeEffect();
-            BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gainPerUpgrade = (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor)
-                * (1 + milkSpent[0] * 0.0001);
-
-            labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
-
-            // Show correct log base in prestige info
-            double logBase = 2.0;
-            string baseText = "₂";
-            string extraText = "";
-            if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
-                extraText = " (multiplied by 1.1)";
-            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
-            {
-                logBase = 1.9;
-                baseText = "_{1.9}";
-                extraText = ""; // No multiplier for challenge 2
-            }
-
-            labelPrestigeInfo.Text = $"Prestige effect: log{baseText}({prestigeCount + 1}) = {prestigeEffect:F2}{extraText} (diminishing returns)";
-        }
-
-        private void buttonPrestige_Click(object sender, EventArgs e)
-        {
-            var cost = GetPrestigeCost();
-            if (point >= cost)
-            {
-                point = BigDouble.Zero;
-                upgradeCount = 0;
-                pointGain = BigDouble.One;
-                prestigeCount++;
-                // Play prestige sfx
-                AudioManagerNAudio.Play("prestige", 0.9f);
-                UnlockGeneratorFeature();
-                UpdateUI();
-                CheckChallengeCompletion();
-            }
-        }
-        private double GetPrestigeEffect()
-        {
-            double logBase = 2.0;
-            // Challenge 2 completed: use log base 1.9 instead of 2
-            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
-                logBase = 1.9;
-
-            double effect = BigDouble.Log(prestigeCount + 1, logBase);
-
-            // Challenge 1: Prestige effectiveness halved
-            if (activeChallengeIndex == 1 || activeChallengeIndex == 3)
-                effect /= 2.0;
-
-            return effect;
-        }
-        private void UpdateGeneratorInfo()
-        {
-            if (generatorCount == 0)
-                labelGeneratorInfo.Text = $"Generators: 0 | Cost: 100";
-            else
-            {
-                BigDouble divisor = GetSoftCapDivisor(point);
-                BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointGain / divisor;
-                labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Every generators 10x your current passive gain after the first";
-                labelPointsPerSecond.Text = $"Points/second: {FormatNumbers(pps)}";
-            }
-        }
-
-        private void buttonGenerator_Click(object sender, EventArgs e)
-        {
-            if (point >= generatorCost)
-            {
-                point -= generatorCost;
-                generatorCount++;
-                generatorCost = BigDouble.Pow(generatorCost, 2);
-                labelPoint.Text = FormatNumbers(point);
-                UpdateUI();
-                CheckChallengeCompletion();
-            }
-        }
-
-        private void GeneratorTimer_Tick(object sender, EventArgs e)
-        {
-            if (generatorCount > 0)
-            {
-                labelPointsPerSecond.Visible = true;
-                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier;
-                passiveGain = ApplySoftCap(point, passiveGain);
-                point += passiveGain;
-                // Play gain sound for generator passive tick (lower volume)
-                AudioManagerNAudio.Play("gain", 0.5f);
-                labelPoint.Text = FormatNumbers(point);
-                UpdateUI();
-            }
-            else
-                labelPointsPerSecond.Visible = false;
-        }
-
-        private void buttonAscend_Click(object sender, EventArgs e)
-        {
-            var cost = GetAscendCost();
-            if (point >= cost)
-            {
-                point = BigDouble.Zero;
-                pointGain = BigDouble.One;
-                upgradeCount = 0;
-                prestigeCount = 0;
-                ascendCount++;
-                ascensionPoints++;
-                // Play ascend sfx
-                AudioManagerNAudio.Play("ascend", 0.9f);
-                UnlockAscensionFeature();
-                UpdateUI();
-            }
-        }
-
-        private BigDouble GetUpgradeCost() => baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
-        private BigDouble GetPrestigeCost() => basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
-        private BigDouble GetAscendCost()
-        {
-            if (ascendCount <= 2)
-                return baseAscendCost;
-            return baseAscendCost * BigDouble.Pow(ascendScale, ascendCount - 2);
-        }
-
-        // Soft cap
-        private BigDouble GetSoftCapDivisor(BigDouble point)
-        {
-            BigDouble divisor = BigDouble.One;
-
-            if (milkSpent != null && milkSpent.Length > 1 && milkSpent[1] > BigDouble.Zero)
-                divisor /= (BigDouble.Min(BigDouble.Log(milkSpent[1], 1.1), milkSpent[1]) * 0.01 + BigDouble.One);
-
-            var threshold = GetSoftCapThreshold();
-            var threshold10000 = threshold * 10_000;
-
-            if (point <= threshold)
-            {
-                return BigDouble.One * divisor;
-            }
-            else if (point <= threshold10000)
-            {
-                // Linear scaling: divisor = point / threshold
-                var linearDivisor = point / threshold;
-                return linearDivisor * divisor;
-            }
-            else
-            {
-                return 0; // Hard cap: gains are disabled
-            }
-        }
-        private BigDouble GetSoftCapThreshold()
-        {
-            if (challengesCompleted != null && challengesCompleted.Length > 3 && challengesCompleted[3])
-                return new BigDouble(1_000_000); // Challenge 3: lifted cap
-            return softcapThreshold;
-        }
-        private void UpdateSoftCapLabel()
-        {
-            var threshold = GetSoftCapThreshold();
-            var threshold10000 = threshold * 10_000;
-            BigDouble divisor = GetSoftCapDivisor(point);
-
-            if (point >= threshold10000)
-            {
-                // Hard cap: gains are disabled
-                labelSoftCap.Visible = true;
-                labelSoftCap.Text = $"Current points exceed {FormatNumbers(threshold10000)} (10k× softcap). All gain is disabled by the soft cap.";
-            }
-            else if (point > threshold)
-            {
-                labelSoftCap.Visible = true;
-                labelSoftCap.Text = $"Current points is over {FormatNumbers(threshold)}, gain is divided by {FormatNumbers(divisor)}";
-            }
-            else
-            {
-                labelSoftCap.Visible = false;
-            }
-        }
-        private string FormatNumbers(BigDouble value)
-        {
-            if (value >= BigDouble.Pow(10, 308))
-                return value.ToString("E1");
-
-            string[] suffixes = {
-                "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No",
-                "Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg",
-                "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg",
-                "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag",
-                "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig",
-                "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqag", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg",
-                "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg",
-                "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg",
-                "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog",
-                "Unog", "Dnog", "Tnog", "Qanog", "Qinog", "Sxnog", "Spnog", "Ocnog", "Nonog", "C"
             };
-
-            int suffixIndex = 0;
-            while (value >= 1000 && suffixIndex < suffixes.Length - 1)
-            {
-                value /= 1000;
-                suffixIndex++;
-            }
-            return $"{value:F1}{suffixes[suffixIndex]}";
+            menu.Items.Add(buyMaxItem);
+            menu.Show(buttonUpgrade, e.Location);
         }
 
-        private void ApplyOfflineProgress(DateTime lastSaved, DateTime serverNow)
+        // Compute and purchase the maximum number of upgrades affordable with current points
+        private bool BuyMaxUpgrades()
         {
-            TimeSpan offlineTime = serverNow - lastSaved;
-            int seconds = (int)offlineTime.TotalSeconds;
-            if (seconds <= 0)
-            {
-                // If time difference is negative or zero, skip offline progress
-                return;
-            }
-            int trueSeconds = Math.Min((int)BigDouble.Log(seconds, 1.01), seconds);
-            if (generatorCount <= 0)
-            {
-                if (prestigeCount == 0)
-                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
-                else
-                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress.");
-                return;
-            }
-            double offlineMultiplier = 0.05 + milkSpent[2].ToDouble() * 0.001;
-            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount) * 0.01 * pointGain * offlineMultiplier;
-            BigDouble passiveGain = ratePerSecond * trueSeconds;
-            passiveGain = ApplySoftCap(point, passiveGain);
-            point += passiveGain;
+            // Current next-upgrade cost (A in geometric series)
+            BigDouble A = GetUpgradeCost();
+            double a = upgradeScale; // ratio > 1
 
-            // Play gain sound once for offline grant
-            AudioManagerNAudio.Play("gain", 0.8f);
-            MessageBox.Show(
-                $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away for {seconds}s.\n" +
-                $"Effective time was {trueSeconds}s\n" +
-                $"Current offline multi: x{offlineMultiplier}.",
-                "Offline progress"
-            );
+            if (a <= 1.0)
+            {
+                // Fallback: buy in a loop if scaling is non-increasing (should not happen)
+                bool purchasedAny = false;
+                while (point >= GetUpgradeCost())
+                {
+                    point -= GetUpgradeCost();
+                    upgradeCount++;
+                    purchasedAny = true;
+                }
+                if (purchasedAny)
+                {
+                    if (cooldownDuration == 1000)
+                    {
+                        UnlockPrestigeFeature();
+                        cooldownDuration = 500;
+                    }
+                    RecalculatePointGain();
+                }
+                return purchasedAny;
+            }
 
-            UpdateUI();
-            SaveGame();
+            // Solve n from: A * (a^n - 1)/(a - 1) <= point
+            BigDouble denom = new BigDouble(a - 1.0);
+            if (A <= BigDouble.Zero || point <= BigDouble.Zero)
+                return false;
+
+            BigDouble t = BigDouble.One + (point / A) * denom; // 1 + ((a-1)*point/A)
+            double nDouble = System.Math.Floor(BigDouble.Log(t, a));
+            int n = (int)System.Math.Max(0, nDouble);
+            if (n <= 0)
+                return false;
+
+            // Compute total cost for n upgrades and adjust for rounding if needed
+            BigDouble aPowN = BigDouble.Pow(a, n);
+            BigDouble sum = A * (aPowN - BigDouble.One) / denom;
+            while (n > 0 && sum > point)
+            {
+                n--;
+                aPowN = BigDouble.Pow(a, n);
+                sum = A * (aPowN - BigDouble.One) / denom;
+            }
+            if (n <= 0)
+                return false;
+
+            // Purchase
+            point -= sum;
+            upgradeCount += n;
+
+            if (cooldownDuration == 1000)
+            {
+                UnlockPrestigeFeature();
+                cooldownDuration = 500;
+            }
+            RecalculatePointGain();
+            // Update the upgrade note to reflect current upgrades after bulk purchase
+            labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
+            return true;
         }
 
-        // Save on close
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
-            {
-                base.OnFormClosing(e);
-                return;
-            }
-            SaveGame();
-            MessageBox.Show("Your progress has been saved!", "Game Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            base.OnFormClosing(e);
-        }
-
-#if DEBUG
+        //debug
         private void buttonDebug_Click(object sender, EventArgs e)
         {
             milk *= 10000000000000000000;
             SaveGame();
             UpdateUI();
         }
-#endif
         private void buttonOpenAscensionShop_Click(object sender, EventArgs e)
         {
             int previousActiveChallengeIndex = activeChallengeIndex;
@@ -848,7 +645,21 @@ namespace WinFormsApp1
                 // Only start a challenge if a new one was started
                 if (challengeWindow.ChallengeActive && challengeWindow.ActiveChallengeIndex != previousActiveChallengeIndex)
                 {
-                    StartChallenge(challengeWindow.ActiveChallengeIndex);
+                    int idx = challengeWindow.ActiveChallengeIndex;
+
+                    // Confirm before starting a challenge (warning)
+                    var confirm = MessageBox.Show(
+                        $"Start challenge {idx + 1}?\n\nThis will perform an ascension reset while also resetting your generator count.\nYour generators will NOT be refunded!",
+                        "Start Challenge",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2);
+                    if (confirm != DialogResult.Yes)
+                    {
+                        return;
+                    }
+
+                    StartChallenge(idx);
                 }
             }
         }
@@ -883,8 +694,8 @@ namespace WinFormsApp1
         private void SaveGame()
         {
 #if DEBUG
-    // Do not save the game in debug build
-    return;
+            // Do not save the game in debug build
+            return;
 #endif
             var state = new GameState
             {
@@ -909,6 +720,9 @@ namespace WinFormsApp1
                 MilkStreak = milkStreak,
                 BaseMilkUpgradeCount = baseMilkUpgradeCount,
                 MilkSpent = milkSpent,
+                // Persist challenge session state
+                ActiveChallengeIndex = activeChallengeIndex,
+                PrevCooldownDurationForChallenge = prevCooldownDurationForChallenge
             };
 
             var settings = new JsonSerializerSettings();
@@ -1023,6 +837,10 @@ namespace WinFormsApp1
                 else
                     challengesCompleted = new bool[4];
 
+                // Restore challenge session state
+                activeChallengeIndex = state.ActiveChallengeIndex;
+                prevCooldownDurationForChallenge = state.PrevCooldownDurationForChallenge;
+
                 if (cooldownDuration == 500)
                 {
                     UnlockPrestigeFeature();
@@ -1055,12 +873,10 @@ namespace WinFormsApp1
                 UpdateUI();
             }
         }
-
         private void ApplyUnlocks(GameState state, DateTime? serverTime)
         {
             buttonPrestige.Visible = state.HasUnlockedPrestige;
             labelPrestigeCost.Visible = state.HasUnlockedPrestige;
-            // Removed labelUpgradeNote.Visible manipulation; preserve default text unless purchases happen
 
             buttonGenerator.Visible = state.HasUnlockedGenerators;
             labelGeneratorInfo.Visible = state.HasUnlockedGenerators;
@@ -1068,10 +884,11 @@ namespace WinFormsApp1
             labelPrestigeInfo.Visible = state.HasUnlockedGenerators;
             buttonPremiumShop.Visible = state.HasUnlockedGenerators;
             buttonInfoDailyGain.Visible = state.HasUnlockedGenerators;
-            // After loading state.HasUnlockedGenerators
-            if (state.HasUnlockedGenerators && serverTime != null)
+
+            // Daily reset based on user's local timezone (midnight local)
+            if (state.HasUnlockedGenerators)
             {
-                var today = serverTime.Value.Date;
+                var today = DateTime.Now.Date;
                 var lastClaim = lastMilkClaimDate.Date;
                 if (lastClaim < today)
                 {
@@ -1079,12 +896,17 @@ namespace WinFormsApp1
                         milkStreak++;
                     else
                         milkStreak = 1;
+
                     int milkEarned = 90 + milkStreak * 10 + baseMilkUpgradeCount * 10;
                     milk += milkEarned;
                     lastMilkClaimDate = today;
-                    // Play milk earned sfx
                     AudioManagerNAudio.Play("milkearned", 0.95f);
-                    MessageBox.Show($"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)", "Daily Reward", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        $"You earned {milkEarned} milk for logging in today!\nBase gain: {baseMilkUpgradeCount * 10 + 100}\nStreak: {milkStreak} day(s)",
+                        "Daily Reward",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
                     SaveGame();
                 }
             }
@@ -1094,7 +916,6 @@ namespace WinFormsApp1
 
             buttonOpenAscensionShop.Visible = buttonTranscend.Visible = labelTranscendCost.Visible = state.HasAscended;
         }
-
         private void UnlockPrestigeFeature()
         {
             buttonPrestige.Visible = true;
@@ -1116,7 +937,7 @@ namespace WinFormsApp1
             if (!hasUnlockedPremiumShop)
             {
                 hasUnlockedPremiumShop = true;
-                MessageBox.Show("Here's 10000 milk so you can progress faster in place of the lost data.\n"+
+                MessageBox.Show("Here's 10000 milk so you can progress faster in place of the lost data.\n" +
                     "I'd recommend spending 950 in offline gain, 1000 in softcap reduction and the rest in points gain",
                     "Progress loss compensation :)", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 milk += 10000;
@@ -1233,7 +1054,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseDown(object sender, MouseEventArgs e)
         {
-            if ( e.Button == MouseButtons.Left )
+            if (e.Button == MouseButtons.Left)
             {
                 dragging = true;
                 dragCursorPoint = Cursor.Position;
@@ -1243,7 +1064,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseMove(object sender, MouseEventArgs e)
         {
-            if ( dragging )
+            if (dragging)
             {
                 Point diff = Point.Subtract(Cursor.Position, new Size(dragCursorPoint));
                 this.Location = Point.Add(dragFormPoint, new Size(diff));
@@ -1252,7 +1073,7 @@ namespace WinFormsApp1
 
         private void panelTitleBar_MouseUp(object sender, MouseEventArgs e)
         {
-            if ( e.Button == MouseButtons.Left )
+            if (e.Button == MouseButtons.Left)
             {
                 dragging = false;
             }
@@ -1291,11 +1112,12 @@ namespace WinFormsApp1
             pointGain = BigDouble.One;
             upgradeCount = 0;
             prestigeCount = 0;
+
+            // Challenge-specific: also reset generators
             generatorCount = 0;
             generatorCost = new BigDouble(100);
-            cooldownDuration = 1000;
 
-            // Reset cooldown state and timers so clicks work normally
+            // Reset cooldown state and timers so clicks work normally (do not change base cooldownDuration)
             isCooldown = false;
             cooldownTimer.Stop();
             cooldownElapsed = 0;
@@ -1373,7 +1195,7 @@ namespace WinFormsApp1
             switch (activeChallengeIndex)
             {
                 case 0:
-                    if (point >= 2_500_000)
+                    if (point >= 1_000_000)
                         completed = true;
                     break;
                 case 1:
@@ -1463,32 +1285,300 @@ namespace WinFormsApp1
             int newWidth = (int)Math.Round(autoclickBarBg.Width * (percent / 100.0));
             autoclickBarFill.Width = Math.Max(0, Math.Min(newWidth, autoclickBarBg.Width));
         }
+
+        // Generator timer tick handler
+        private void GeneratorTimer_Tick(object sender, EventArgs e)
+        {
+            if (generatorCount > 0)
+            {
+                labelPointsPerSecond.Visible = true;
+                BigDouble passiveGain = Math.Pow(10, generatorCount) * 0.01 * pointGain * AscensionMultiplier;
+                passiveGain = ApplySoftCap(point, passiveGain);
+                point += passiveGain;
+                AudioManagerNAudio.Play("gain", 0.5f);
+                labelPoint.Text = FormatNumbers(point);
+                UpdateUI();
+            }
+            else
+            {
+                labelPointsPerSecond.Visible = false;
+            }
+        }
+
+        // Cost calculators
+        private BigDouble GetUpgradeCost() => baseUpgradeCost * BigDouble.Pow(upgradeScale, upgradeCount);
+        private BigDouble GetPrestigeCost() => basePrestigeCost * BigDouble.Pow(prestigeScale, prestigeCount);
+        private BigDouble GetAscendCost()
+        {
+            if (ascendCount <= 2)
+                return baseAscendCost;
+            return baseAscendCost * BigDouble.Pow(ascendScale, ascendCount - 2);
+        }
+
+        // Prestige effect with challenge modifiers
+        private double GetPrestigeEffect()
+        {
+            double logBase = 2.0;
+            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+                logBase = 1.9;
+            double effect = BigDouble.Log(prestigeCount + 1, logBase);
+            if (activeChallengeIndex == 1 || activeChallengeIndex == 3)
+                effect /= 2.0;
+            return effect;
+        }
+
+        // Soft cap helpers
+        private BigDouble GetSoftCapDivisor(BigDouble currentPoint)
+        {
+            BigDouble divisor = BigDouble.One;
+            if (milkSpent != null && milkSpent.Length > 1 && milkSpent[1] > BigDouble.Zero)
+                divisor /= (BigDouble.Min(BigDouble.Log(milkSpent[1], 1.1), milkSpent[1]) * 0.01 + BigDouble.One);
+
+            var threshold = GetSoftCapThreshold();
+            var threshold1000 = threshold * 1000;
+
+            if (currentPoint <= threshold)
+            {
+                return BigDouble.One;
+            }
+            else if (currentPoint <= threshold1000)
+            {
+                var linearDivisor = currentPoint / threshold;
+                if (linearDivisor * divisor <= 1) return 1;
+                return linearDivisor * divisor;
+            }
+            else
+            {
+                return 0; // Hard cap: gains are disabled
+            }
+        }
+        private BigDouble GetSoftCapThreshold()
+        {
+            if (challengesCompleted != null && challengesCompleted.Length > 3 && challengesCompleted[3])
+                return new BigDouble(1_000_000); // Challenge 3: lifted cap
+            return softcapThreshold;
+        }
+        private void UpdateSoftCapLabel()
+        {
+            var threshold = GetSoftCapThreshold();
+            var threshold1000 = threshold * 1000;
+            BigDouble divisor = GetSoftCapDivisor(point);
+
+            if (point >= threshold1000)
+            {
+                labelSoftCap.Visible = true;
+                labelSoftCap.Text = $"Current points exceed {FormatNumbers(threshold1000)} (1000× softcap). All gain is disabled by the soft cap.";
+            }
+            else if (point > threshold)
+            {
+                labelSoftCap.Visible = true;
+                labelSoftCap.Text = $"Current points is over {FormatNumbers(threshold)}, gain is divided by {FormatNumbers(divisor)}";
+            }
+            else
+            {
+                labelSoftCap.Visible = false;
+            }
+        }
+
+        // UI info helpers
+        private void UpdateUpgradeInfoLabel()
+        {
+            double prestigeEffect = GetPrestigeEffect();
+            BigDouble divisor = GetSoftCapDivisor(point);
+            BigDouble gainPerUpgrade = (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor)
+                * (1 + milkSpent[0] * 0.0001);
+
+            labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
+
+            double logBase = 2.0;
+            string baseText = "₂";
+            string extraText = "";
+            if (challengesCompleted != null && challengesCompleted.Length > 1 && challengesCompleted[1])
+                extraText = " (multiplied by 1.1)";
+            if (challengesCompleted != null && challengesCompleted.Length > 2 && challengesCompleted[2])
+            {
+                logBase = 1.9;
+                baseText = "_{1.9}";
+                extraText = ""; // No multiplier for challenge 2
+            }
+
+            double prestigeEff = GetPrestigeEffect();
+            labelPrestigeInfo.Text = $"Prestige effect: log{baseText}({prestigeCount + 1}) = {prestigeEff:F2}{extraText}";
+        }
+        private void UpdateGeneratorInfo()
+        {
+            if (generatorCount == 0)
+                labelGeneratorInfo.Text = $"Generators: 0 | Cost: 100";
+            else
+            {
+                BigDouble divisor = GetSoftCapDivisor(point);
+                BigDouble pps = Math.Pow(10, generatorCount) * 0.01 * pointGain / divisor;
+                labelGeneratorInfo.Text = $"Generators: {generatorCount} | Cost: {FormatNumbers(generatorCost)} | Every generators 10x your current passive gain after the first";
+                labelPointsPerSecond.Text = $"Points/second: {FormatNumbers(pps)}";
+            }
+        }
+
+        // Number formatting
+        private string FormatNumbers(BigDouble value)
+        {
+            if (value >= BigDouble.Pow(10, 308))
+                return value.ToString("E1");
+
+            string[] suffixes = {
+                "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No",
+                "Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg",
+                "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg",
+                "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag",
+                "Uqag", "Dqag", "Tqag", "Qaqag", "Qiqag", "Sxqag", "Spqag", "Ocqag", "Noqag", "Qig",
+                "Uqig", "Dqig", "Tqig", "Qaqig", "Qiqag", "Sxqig", "Spqig", "Ocqig", "Noqig", "Sxg",
+                "Usxg", "Dsxg", "Tsxg", "Qasxg", "Qisxg", "Sxsxg", "Spsxg", "Ocsxg", "Nosxg", "Spg",
+                "Uspg", "Dspg", "Tspg", "Qaspg", "Qispg", "Sxspg", "Spspg", "Ocspg", "Nospg", "Ocg",
+                "Uocg", "Docg", "Tocg", "Qaocg", "Qiocg", "Sxocg", "Spocg", "Ococg", "Noocg", "Nog",
+                "Unog", "Dnog", "Tnog", "Qanog", "Qinog", "Sxnog", "Spnog", "Ocnog", "Nonog", "C"
+            };
+
+            int suffixIndex = 0;
+            while (value >= 1000 && suffixIndex < suffixes.Length - 1)
+            {
+                value /= 1000;
+                suffixIndex++;
+            }
+            return $"{value:F1}{suffixes[suffixIndex]}";
+        }
+
+        // Offline progress
+        private void ApplyOfflineProgress(DateTime lastSaved, DateTime serverNow)
+        {
+            TimeSpan offlineTime = serverNow - lastSaved;
+            int seconds = (int)offlineTime.TotalSeconds;
+            if (seconds <= 0)
+            {
+                return;
+            }
+            int trueSeconds = Math.Min((int)BigDouble.Log(seconds, 1.01), seconds);
+            if (generatorCount <= 0)
+            {
+                if (prestigeCount == 0)
+                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress. Unlock it after your first prestige!");
+                else
+                    MessageBox.Show("Welcome back! You currently don't own any generator for offline progress.");
+                return;
+            }
+            double offlineMultiplier = 0.05 + milkSpent[2].ToDouble() * 0.001;
+            BigDouble ratePerSecond = BigDouble.Pow(10, generatorCount) * 0.01 * pointGain * offlineMultiplier;
+            BigDouble passiveGain = ratePerSecond * trueSeconds;
+            passiveGain = ApplySoftCap(point, passiveGain);
+            point += passiveGain;
+
+            AudioManagerNAudio.Play("gain", 0.8f);
+            MessageBox.Show(
+                $"Welcome back! You earned {FormatNumbers(passiveGain)} points while you were away for {seconds}s.\n" +
+                $"Effective time was {trueSeconds}s\n" +
+                $"Current offline multi: x{offlineMultiplier}.",
+                "Offline progress"
+            );
+
+            UpdateUI();
+            SaveGame();
+        }
+
+        // Designer-wired handlers
+        private void buttonPrestige_Click(object sender, EventArgs e)
+        {
+            var cost = GetPrestigeCost();
+            if (point >= cost)
+            {
+                point = BigDouble.Zero;
+                upgradeCount = 0;
+                pointGain = BigDouble.One;
+                prestigeCount++;
+                AudioManagerNAudio.Play("prestige", 0.9f);
+                UnlockGeneratorFeature();
+                UpdateUI();
+                CheckChallengeCompletion();
+            }
+        }
+        private void buttonAscend_Click(object sender, EventArgs e)
+        {
+            // If ascending while in a challenge, confirm with warning and show objective
+            if (activeChallengeIndex != -1)
+            {
+                int idx = activeChallengeIndex;
+                string objective = GetChallengeObjectivePlainText(idx);
+                var confirmAscendInChallenge = MessageBox.Show(
+                    $"You're in challenge {idx + 1} right now, the objective is to {objective}. Are you sure you want to ascend while in a challenge?",
+                    "Challenge in progress",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+                if (confirmAscendInChallenge != DialogResult.Yes)
+                {
+                    return;
+                }
+            }
+
+            var cost = GetAscendCost();
+            if (point >= cost)
+            {
+                point = BigDouble.Zero;
+                pointGain = BigDouble.One;
+                upgradeCount = 0;
+                prestigeCount = 0;
+                ascendCount++;
+                ascensionPoints++;
+                AudioManagerNAudio.Play("ascend", 0.9f);
+                UnlockAscensionFeature();
+                UpdateUI();
+            }
+        }
+
+        private string GetChallengeObjectivePlainText(int idx)
+        {
+            switch (idx)
+            {
+                case 0: return "reach 1,000,000 points";
+                case 1: return "prestige 8 times";
+                case 2: return "buy 2 generators";
+                case 3: return "reach 25,000,000 points";
+                default: return "complete the challenge";
+            }
+        }
+        private void buttonGenerator_Click(object sender, EventArgs e)
+        {
+            if (point >= generatorCost)
+            {
+                point -= generatorCost;
+                generatorCount++;
+                generatorCost = BigDouble.Pow(generatorCost, 2);
+                labelPoint.Text = FormatNumbers(point);
+                UpdateUI();
+                CheckChallengeCompletion();
+            }
+        }
+
         private async void buttonInfoDailyGain_Click(object sender, EventArgs e)
         {
-            // Compute tomorrow's milk using same formula used elsewhere
             int tomorrowMilk = 100 + milkStreak * 10 + baseMilkUpgradeCount * 10;
 
-            // Get server time (fallback to UTC)
-            DateTime serverNow = DateTime.UtcNow;
-            try
+            DateTime localNow = DateTime.Now;
+            TimeZoneInfo localTz = TimeZoneInfo.Local;
+            TimeSpan utcOffset = localTz.GetUtcOffset(localNow);
+            string UtcOffsetText(TimeSpan offset)
             {
-                var serverTime = await GetServerUtcDateAsync();
-                if (serverTime.HasValue)
-                    serverNow = serverTime.Value;
+                string sign = offset >= TimeSpan.Zero ? "+" : "-";
+                offset = offset.Duration();
+                return offset.Minutes == 0
+                    ? $"UTC{sign}{offset.Hours}"
+                    : $"UTC{sign}{offset.Hours}:{offset.Minutes:00}";
             }
-            catch
-            {
-                serverNow = DateTime.UtcNow;
-            }
+            string tzDisplay = UtcOffsetText(utcOffset);
 
-            // Calculate server offset and next reset time (server midnight)
-            TimeSpan serverOffset = serverNow - DateTime.UtcNow;
-            DateTime nextReset = serverNow.Date.AddDays(1);
+            DateTime nextReset = localNow.Date.AddDays(1);
 
             using var infoForm = new Form
             {
                 Text = "Daily Milk Gain Info",
-                Size = new Size(480, 260),
+                Size = new Size(520, 280),
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 StartPosition = FormStartPosition.CenterParent,
                 MaximizeBox = false,
@@ -1500,9 +1590,9 @@ namespace WinFormsApp1
                 Text = "Your daily milk gain is a base amount plus your current login streak.\n\n" +
                        "Base gain: 10 x number of milk gain upgrades purchased + 100\n" +
                        "Streak bonus: +10 milk per consecutive day logged in\n\n" +
-                       "Your streak resets if you miss a day.",
+                       $"Daily reset occurs at 00:00 in your timezone ({tzDisplay}).",
                 Location = new Point(12, 12),
-                Size = new Size(440, 120),
+                Size = new Size(480, 120),
                 Font = new Font("Segoe UI", 9F)
             };
             infoForm.Controls.Add(lblInfo);
@@ -1511,7 +1601,7 @@ namespace WinFormsApp1
             {
                 Text = $"Your milk gain for tomorrow: {tomorrowMilk}",
                 Location = new Point(12, 135),
-                Size = new Size(440, 22),
+                Size = new Size(480, 22),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold)
             };
             infoForm.Controls.Add(lblTomorrow);
@@ -1519,50 +1609,36 @@ namespace WinFormsApp1
             var lblCountdown = new Label
             {
                 Text = "",
-                Location = new Point(12, 160),
-                Size = new Size(440, 40),
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                Location = new Point(12, 180),
+                Size = new Size(480, 46),
+                Font = new Font("Segoe UI", 11.5F, FontStyle.Bold),
                 ForeColor = Color.DarkBlue
             };
             infoForm.Controls.Add(lblCountdown);
 
-            var btnClose = new Button
-            {
-                Text = "Close",
-                DialogResult = DialogResult.OK,
-                Size = new Size(90, 30),
-                Location = new Point(infoForm.ClientSize.Width - 110, infoForm.ClientSize.Height - 50),
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-            };
-            infoForm.Controls.Add(btnClose);
-
-            // Timer for updating countdown (declare after nextReset so lambda can capture it)
             var countdownTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             countdownTimer.Tick += (s, ev) =>
             {
-                DateTime currentServer = DateTime.UtcNow + serverOffset;
-                TimeSpan remaining = nextReset - currentServer;
+                DateTime nowLocal = DateTime.Now;
+                TimeSpan remaining = nextReset - nowLocal;
                 if (remaining <= TimeSpan.Zero)
                 {
-                    // advance to next day
-                    nextReset = nextReset.AddDays(1);
-                    remaining = nextReset - currentServer;
+                    nextReset = nowLocal.Date.AddDays(1);
+                    remaining = nextReset - nowLocal;
                 }
 
-                string remainingText;
-                if (remaining.TotalDays >= 1)
-                    remainingText = string.Format("{0}d {1:00}h {2:00}m {3:00}s", (int)remaining.TotalDays, remaining.Hours, remaining.Minutes, remaining.Seconds);
-                else
-                    remainingText = string.Format("{0:00}h {1:00}m {2:00}s", remaining.Hours, remaining.Minutes, remaining.Seconds);
+                string remainingText = remaining.TotalDays >= 1
+                    ? string.Format("{0}d {1:00}h {2:00}m {3:00}s", (int)remaining.TotalDays, remaining.Hours, remaining.Minutes, remaining.Seconds)
+                    : string.Format("{0:00}h {1:00}m {2:00}s", remaining.Hours, remaining.Minutes, remaining.Seconds);
 
-                lblCountdown.Text = $"Time until daily reset (server): {remainingText}\nServer time: {currentServer:yyyy-MM-dd HH:mm:ss} UTC";
+                lblCountdown.Text = $"Time until daily reset (your timezone {tzDisplay}): {remainingText}\n" +
+                                    $"Local time: {nowLocal:yyyy-MM-dd HH:mm:ss} ({tzDisplay})";
             };
 
             infoForm.FormClosing += (s, ev) => countdownTimer.Stop();
             countdownTimer.Start();
 
             infoForm.ShowDialog(this);
-
             countdownTimer.Stop();
         }
     }

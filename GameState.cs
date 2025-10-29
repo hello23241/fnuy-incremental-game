@@ -29,5 +29,8 @@ namespace WinFormsApp1
         public int MilkStreak { get; set; }
         public BigDouble[] MilkSpent { get; set; } = new BigDouble[3];
         public int BaseMilkUpgradeCount { get; set; }
+        // Challenge state persistence
+        public int ActiveChallengeIndex { get; set; } = -1;
+        public int? PrevCooldownDurationForChallenge { get; set; }
     }
 }

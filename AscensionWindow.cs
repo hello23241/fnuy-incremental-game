@@ -13,6 +13,11 @@ namespace WinFormsApp1
         private PictureBox[] pictureBoxChallenges = new PictureBox[4]; // Array to hold challenge icon
         private Label labelChallengeRequirement;
 
+        // Parameterless constructor for the WinForms designer and default runtime use
+        public AscensionWindow() : this(ascensionCount: 0, challengesCompleted: new bool[4], activeChallengeIndex: -1)
+        {
+        }
+
         // Add this method to handle all icon clicks:
         private void PictureBoxChallengeIcon_Click(int challengeIndex)
         {
@@ -30,9 +35,9 @@ namespace WinFormsApp1
             {
                 case 0:
                     challengeName = "Simple nerf simple buff";
-                    challengeDesc = "Point gain is divided by 10";
+                    challengeDesc = "Point gain is divided by 5";
                     challengeReward = "Challenge Reward:\nPoint gain x3";
-                    challengeRequirement = "Requirement: Reach 3,000,000 points.";
+                    challengeRequirement = "Requirement: Reach 1,000,000 points.";
                     break;
                 case 1:
                     challengeName = "Prestiging is for newbies";
@@ -220,11 +225,11 @@ namespace WinFormsApp1
             // Ascension milestone at 3
             if (ascensionCount >= 3)
             {
-                labelBoosts.Text += $"3. [Active] Right click upgrade to\nbuy max\n";
+                labelBoosts.Text += $"3. [Active] Right click upgrade to buy max\n";
             }
             else
             {
-                labelBoosts.Text += $"3. [Locked] Unlocks buy max for\nupgrade\n";
+                labelBoosts.Text += $"3. [Locked] Unlocks buy max for upgrade\n";
             }
 
             // Ascension milestone at 5
@@ -289,5 +294,20 @@ namespace WinFormsApp1
                 dragging = false;
             }
         }
+
+        // Designer-wired event handlers
+        private void AscensionWindow_Resize(object sender, System.EventArgs e)
+        {
+            panelTitleBar.Width = this.ClientSize.Width;
+            buttonClose.Location = new Point(panelTitleBar.Width - buttonClose.Width, 0);
+        }
+        private void panelTitleBar_Resize(object sender, System.EventArgs e)
+        {
+            buttonClose.Location = new Point(panelTitleBar.Width - buttonClose.Width, 0);
+        }
+        private void pictureBoxChallengeIcon0_Click(object sender, System.EventArgs e) => PictureBoxChallengeIcon_Click(0);
+        private void pictureBoxChallengeIcon1_Click(object sender, System.EventArgs e) => PictureBoxChallengeIcon_Click(1);
+        private void pictureBoxChallengeIcon2_Click(object sender, System.EventArgs e) => PictureBoxChallengeIcon_Click(2);
+        private void pictureBoxChallengeIcon3_Click(object sender, System.EventArgs e) => PictureBoxChallengeIcon_Click(3);
     }
 }
