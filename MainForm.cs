@@ -130,6 +130,10 @@ namespace WinFormsApp1
                 AudioManagerNAudio.RegisterFromEmbeddedResource("challengestart", "Resources.completetask.mp3");
                 // Milk earned
                 AudioManagerNAudio.RegisterFromEmbeddedResource("milkearned", "Resources.milkearned.wav");
+                // Milk spent
+                AudioManagerNAudio.RegisterFromEmbeddedResource("milkspent", "Resources.milkspent.mp3");
+                // Generator purchase
+                AudioManagerNAudio.RegisterFromEmbeddedResource("genpurchase", "Resources.genpurchase.mp3");
                 // Transcend
                 AudioManagerNAudio.RegisterFromEmbeddedResource("transcend", "Resources.transcend.wav");
             }
@@ -161,7 +165,7 @@ namespace WinFormsApp1
             this.Icon = Properties.Resources.NianBean;
 
             // Wire events that can cause designer issues only at runtime
-            try { buttonUpgrade.MouseDown += buttonUpgrade_MouseDown; } catch { }
+            try { buttonUpgrade.MouseDown += buttonUpgrade_RightClick; } catch { }
 
             //Transcend flash timer
             transcendFlashTimer = new System.Windows.Forms.Timer();
@@ -505,7 +509,10 @@ namespace WinFormsApp1
             var cost = GetUpgradeCost();
             if (point >= cost)
             {
-                point -= cost;
+                // Apply softer deduction based on current softcap divisor
+                BigDouble deduction = GetEffectiveUpgradeDeduction(cost);
+                point -= deduction;
+
                 upgradeCount++;
                 if (cooldownDuration == 1000)
                 {
@@ -516,13 +523,13 @@ namespace WinFormsApp1
                 // Update the upgrade note to reflect current upgrades
                 labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
                 // Play upgrade sfx
-                AudioManagerNAudio.Play("upgrade", 0.9f);
+                AudioManagerNAudio.Play("upgrade", 0.5f);
                 UpdateUI();
             }
         }
 
         // Right-click handler: if player has >=3 ascensions, offer Buy Max menu
-        private void buttonUpgrade_MouseDown(object sender, MouseEventArgs e)
+        private void buttonUpgrade_RightClick(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Right)
                 return;
@@ -559,7 +566,11 @@ namespace WinFormsApp1
                 bool purchasedAny = false;
                 while (point >= GetUpgradeCost())
                 {
-                    point -= GetUpgradeCost();
+                    BigDouble loopCost = GetUpgradeCost();
+                    BigDouble loopDeduction = GetEffectiveUpgradeDeduction(loopCost);
+                    if (loopDeduction > point)
+                        break;
+                    point -= loopDeduction;
                     upgradeCount++;
                     purchasedAny = true;
                 }
@@ -586,7 +597,7 @@ namespace WinFormsApp1
             if (n <= 0)
                 return false;
 
-            // Compute total cost for n upgrades and adjust for rounding if needed
+            // Compute total base cost for n upgrades and adjust for rounding if needed
             BigDouble aPowN = BigDouble.Pow(a, n);
             BigDouble sum = A * (aPowN - BigDouble.One) / denom;
             while (n > 0 && sum > point)
@@ -598,8 +609,40 @@ namespace WinFormsApp1
             if (n <= 0)
                 return false;
 
-            // Purchase
-            point -= sum;
+            // Apply softcap discount to the total deduction
+            BigDouble totalDeduction = GetEffectiveUpgradeDeduction(sum);
+            if (totalDeduction > point)
+            {
+                // If discounted sum still exceeds points due to rounding, reduce n conservatively via loop
+                bool purchasedAny = false;
+                while (n > 0)
+                {
+                    // buy one by one with discounted cost
+                    BigDouble oneCost = GetUpgradeCost();
+                    BigDouble oneDeduction = GetEffectiveUpgradeDeduction(oneCost);
+                    if (oneDeduction > point)
+                        break;
+                    point -= oneDeduction;
+                    upgradeCount++;
+                    n--;
+                    purchasedAny = true;
+                }
+                if (purchasedAny)
+                {
+                    if (cooldownDuration == 1000)
+                    {
+                        UnlockPrestigeFeature();
+                        cooldownDuration = 500;
+                    }
+                    RecalculatePointGain();
+                    // Update the upgrade note to reflect current upgrades after bulk purchase
+                    labelUpgradeNote.Text = $"Upgrade count: {EffectiveUpgradeCount}";
+                }
+                return purchasedAny;
+            }
+
+            // Deduct discounted total and apply count
+            point -= totalDeduction;
             upgradeCount += n;
 
             if (cooldownDuration == 1000)
@@ -652,7 +695,7 @@ namespace WinFormsApp1
                         $"Start challenge {idx + 1}?\n\nThis will perform an ascension reset while also resetting your generator count.\nYour generators will NOT be refunded!",
                         "Start Challenge",
                         MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning,
+                        MessageBoxIcon.Information,
                         MessageBoxDefaultButton.Button2);
                     if (confirm != DialogResult.Yes)
                     {
@@ -1079,7 +1122,7 @@ namespace WinFormsApp1
             }
         }
 
-        private double AscensionMultiplier => Math.Pow(1.1, ascendCount);
+        private double AscensionMultiplier => Math.Pow(2, ascendCount);
 
         private int EffectiveCooldownDuration
         {
@@ -1165,6 +1208,8 @@ namespace WinFormsApp1
                 {
                     milk -= cost;
                     baseMilkUpgradeCount++;
+                    // Play milk spent sfx
+                    AudioManagerNAudio.Play("milkspent", 0.95f);
                     SaveGame();
                     UpdateUI();
                     return true;
@@ -1178,6 +1223,8 @@ namespace WinFormsApp1
                 {
                     milk -= amount;
                     milkSpent[upgradeIndex] += amount;
+                    // Play milk spent sfx
+                    AudioManagerNAudio.Play("milkspent", 0.95f);
                     SaveGame();
                     UpdateUI();
                     return true;
@@ -1263,6 +1310,20 @@ namespace WinFormsApp1
             return gain / divisor;
         }
 
+        // Compute the effective deduction for upgrade costs under softcap rules
+        private BigDouble GetEffectiveUpgradeDeduction(BigDouble baseCost)
+        {
+            BigDouble divisor = GetSoftCapDivisor(point);
+            // If hard cap (divisor == 0), upgrades cost 0 points
+            if (divisor <= BigDouble.Zero)
+                return BigDouble.Zero;
+
+            BigDouble factor = divisor * 0.5; // divide by 0.5x the softcap divisor
+            if (factor < BigDouble.One)
+                factor = BigDouble.One; // clamp denominator to at least 1
+
+            return baseCost / factor;
+        }
 
         // Add event handler stubs for designer compatibility
         private void buttonMinimize_MouseEnter(object sender, EventArgs e) => buttonMinimize.BackColor = Color.FromArgb(64, 64, 64);
@@ -1343,7 +1404,7 @@ namespace WinFormsApp1
             }
             else if (currentPoint <= threshold1000)
             {
-                var linearDivisor = currentPoint / threshold;
+                var linearDivisor = currentPoint / 2 / threshold;
                 if (linearDivisor * divisor <= 1) return 1;
                 return linearDivisor * divisor;
             }
@@ -1385,8 +1446,21 @@ namespace WinFormsApp1
         {
             double prestigeEffect = GetPrestigeEffect();
             BigDouble divisor = GetSoftCapDivisor(point);
-            BigDouble gainPerUpgrade = (1 + EffectiveUpgradeCount * prestigeEffect * GetPrestigeIncrement() / 100 / divisor)
-                * (1 + milkSpent[0] * 0.0001);
+
+            // Each additional upgrade increases the inner multiplier by:
+            // f(U) = 1 + U + U^2 * k, where k = prestigeEffect * GetPrestigeIncrement()/100/divisor
+            // Delta per upgrade = f(U+1) - f(U) = 1 + (2U + 1) * k
+            BigDouble k = prestigeEffect * GetPrestigeIncrement() / 100 / divisor;
+
+            double challenge0Multi = (challengesCompleted != null && challengesCompleted.Length > 0 && challengesCompleted[0]) ? 3 : 1.0;
+            double challengeDebuff = 1.0;
+            if (activeChallengeIndex == 0 || activeChallengeIndex == 3)
+                challengeDebuff /= 10;
+
+            BigDouble gainPerUpgrade = (BigDouble.One + (2 * EffectiveUpgradeCount + 1) * k)
+                * challenge0Multi * challengeDebuff
+                * (BigDouble.One + milkSpent[0] * 0.0001)
+                * AscensionMultiplier;
 
             labelUpgradeInfo.Text = $"each upgrade adds {FormatNumbers(gainPerUpgrade)} to your click multiplier";
 
@@ -1550,6 +1624,8 @@ namespace WinFormsApp1
                 point -= generatorCost;
                 generatorCount++;
                 generatorCost = BigDouble.Pow(generatorCost, 2);
+                // Play generator purchase sfx
+                AudioManagerNAudio.Play("genpurchase", 0.9f);
                 labelPoint.Text = FormatNumbers(point);
                 UpdateUI();
                 CheckChallengeCompletion();
@@ -1640,6 +1716,23 @@ namespace WinFormsApp1
 
             infoForm.ShowDialog(this);
             countdownTimer.Stop();
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            try
+            {
+                SaveGame();
+            }
+            catch { }
+
+            try
+            {
+                MessageBox.Show("Your progress has been saved!", "Game saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch { }
+
+            base.OnFormClosing(e);
         }
     }
 }

@@ -228,6 +228,18 @@ namespace WinFormsApp1
                 }
             }
 
+            // Clear all input boxes after purchase
+            if (customAmountBoxes != null)
+            {
+                for (int i = 0; i < customAmountBoxes.Length; i++)
+                {
+                    if (customAmountBoxes[i] != null)
+                    {
+                        customAmountBoxes[i].Text = string.Empty;
+                    }
+                }
+            }
+
             // If boost 3 reached cap, adjust controls
             if (milkSpent != null && milkSpent.Length > 2 && milkSpent[2] >= new BigDouble(950))
             {

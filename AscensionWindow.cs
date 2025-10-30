@@ -35,7 +35,7 @@ namespace WinFormsApp1
             {
                 case 0:
                     challengeName = "Simple nerf simple buff";
-                    challengeDesc = "Point gain is divided by 5";
+                    challengeDesc = "Point gain is divided by 10";
                     challengeReward = "Challenge Reward:\nPoint gain x3";
                     challengeRequirement = "Requirement: Reach 1,000,000 points.";
                     break;
@@ -203,43 +203,43 @@ namespace WinFormsApp1
 
             if (ascensionCount >= 1)
             {
-                double multiplier = Math.Pow(1.5, ascensionCount);
-                labelBoosts.Text += $"1. [Active] Point multiplier: x{multiplier:F2} (1.5x compounding per ascension)\n";
+                double multiplier = Math.Pow(2, ascensionCount);
+                labelBoosts.Text += $"1. [Active] Point multiplier: x{multiplier} (2x compounding per ascension)\n\n";
             }
             else
             {
-                labelBoosts.Text += $"1. [Locked] Point multiplier: Unlocks at 1 ascension\n";
+                labelBoosts.Text += $"1. [Locked] Point multiplier: Unlocks at 1 ascension\n\n";
             }
 
             if (ascensionCount >= 2)
             {
                 int reductions = ascensionCount / 2;
                 double cooldownReduction = reductions * 5;
-                labelBoosts.Text += $"2. [Active] Button cooldown reduced by {cooldownReduction}% ({reductions}×5%), starts autoclicking at half the speed\n";
+                labelBoosts.Text += $"2. [Active] Button cooldown reduced by {cooldownReduction}% ({reductions}×5%), starts autoclicking at half the speed\n\n";
             }
             else
             {
-                labelBoosts.Text += $"2. [Locked] Button cooldown reduction and auto clicker: Unlocks at 2 ascensions\n";
+                labelBoosts.Text += $"2. [Locked] Button cooldown reduction and auto clicker: Unlocks at 2 ascensions\n\n";
             }
 
             // Ascension milestone at 3
             if (ascensionCount >= 3)
             {
-                labelBoosts.Text += $"3. [Active] Right click upgrade to buy max\n";
+                labelBoosts.Text += $"3. [Active] Right click upgrade to buy max\n\n";
             }
             else
             {
-                labelBoosts.Text += $"3. [Locked] Unlocks buy max for upgrade\n";
+                labelBoosts.Text += $"3. [Locked] Unlocks buy max for upgrade\n\n";
             }
 
             // Ascension milestone at 5
             if (ascensionCount >= 5)
             {
-                labelBoosts.Text += $"4. [Active] Placeholder for 5 ascensions effect\n";
+                labelBoosts.Text += $"4. [Active] Upgrade is now bought once per second\n\n";
             }
             else
             {
-                labelBoosts.Text += $"4. [Locked] Placeholder: Unlocks at 5 ascensions\n";
+                labelBoosts.Text += $"4. [Locked] Auto buy upgrade: Unlocks at 5 ascensions\n\n";
             }
 
             // Event handlers for window controls
