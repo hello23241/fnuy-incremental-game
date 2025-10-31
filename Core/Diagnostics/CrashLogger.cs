@@ -10,8 +10,7 @@ public static class CrashLogger
         string crashLogPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FnuyIncrementalGame",
-            "crashlog.txt"
-        );
+            "crashlog.txt");
 
         Directory.CreateDirectory(Path.GetDirectoryName(crashLogPath)!);
         string log = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}{Environment.NewLine}";

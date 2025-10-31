@@ -13,7 +13,6 @@ public readonly record struct UnlockEffects(
 
 public static class UnlockOrchestrationService
 {
-    // Handles one-time compensation and daily reward when generators become available.
     public static UnlockEffects HandleGeneratorUnlock(
         bool hasUnlockedPremiumShop,
         DateTime lastMilkClaimDate,
@@ -29,8 +28,7 @@ public static class UnlockOrchestrationService
             lastMilkClaimDate: lastMilkClaimDate,
             currentStreak: currentMilkStreak,
             baseMilkUpgradeCount: baseMilkUpgradeCount,
-            todayLocalDate: nowLocalDate.Date
-        );
+            todayLocalDate: nowLocalDate.Date);
 
         return new UnlockEffects(
             FirstTimeUnlock: firstTime,
@@ -38,7 +36,6 @@ public static class UnlockOrchestrationService
             AwardDaily: daily.ShouldAward,
             DailyMilk: daily.MilkEarned,
             NewMilkStreak: daily.ShouldAward ? daily.NewMilkStreak : currentMilkStreak,
-            NewLastMilkClaimDate: daily.ShouldAward ? daily.NewLastMilkClaimDate : lastMilkClaimDate
-        );
+            NewLastMilkClaimDate: daily.ShouldAward ? daily.NewLastMilkClaimDate : lastMilkClaimDate);
     }
 }
