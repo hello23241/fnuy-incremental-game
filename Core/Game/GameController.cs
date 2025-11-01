@@ -6,14 +6,13 @@ namespace WinFormsApp1.Core.Game;
 
 public sealed class GameController
 {
-    public GameRuntimeState State { get; private set; }
+    public GameRuntimeState State { get; set; }
 
     public GameController(GameRuntimeState initialState)
     {
         State = initialState;
     }
 
-    // Click: returns gain applied
     public BigDouble Click(double ascensionMultiplier, Func<BigDouble, BigDouble, BigDouble> applySoftCap)
     {
         var gain = PassiveGainService.ComputeClickGain(
@@ -26,7 +25,6 @@ public sealed class GameController
         return gain;
     }
 
-    // Try to buy one upgrade using caller's cost/deduction rules
     public bool TryBuyUpgrade(Func<BigDouble> getNextUpgradeCost, Func<BigDouble, BigDouble> getEffectiveUpgradeDeduction)
     {
         var cost = getNextUpgradeCost();
@@ -41,7 +39,6 @@ public sealed class GameController
         return true;
     }
 
-    // Buy-max via existing purchase service
     public (int purchased, BigDouble remaining) BuyMaxUpgrades(
         Func<BigDouble> getNextUpgradeCost,
         double upgradeScale,
@@ -64,7 +61,6 @@ public sealed class GameController
         return (purchased, remaining);
     }
 
-    // Try buy 1 generator (cost growth is squared)
     public bool TryBuyGenerator()
     {
         if (State.Point < State.GeneratorCost) return false;
@@ -82,7 +78,23 @@ public sealed class GameController
         return true;
     }
 
-    // Prestige (caller decides cost)
+    public BigDouble ApplyGeneratorTick(double ascensionMultiplier, Func<BigDouble, BigDouble, BigDouble> applySoftCap)
+    {
+        if (State.GeneratorCount <= 0) return BigDouble.Zero;
+
+        var passiveGain = PassiveGainService.ComputeGeneratorPassiveGain(
+            State.GeneratorCount,
+            State.PointMultiplier,
+            ascensionMultiplier,
+            State.Point,
+            applySoftCap);
+
+        if (passiveGain > BigDouble.Zero)
+            State = State with { Point = State.Point + passiveGain };
+
+        return passiveGain;
+    }
+
     public bool TryPrestige(BigDouble prestigeCost)
     {
         if (State.Point < prestigeCost) return false;
@@ -98,7 +110,6 @@ public sealed class GameController
         return true;
     }
 
-    // Ascend (caller decides cost and any UI confirmations)
     public bool TryAscend(BigDouble ascendCost)
     {
         if (State.Point < ascendCost) return false;
@@ -123,7 +134,6 @@ public sealed class GameController
         return true;
     }
 
-    // Start challenge (caller decides if ascend can occur)
     public void StartChallenge(bool canAscend, int challengeIndex)
     {
         var res = ChallengeSessionService.Start(
@@ -146,9 +156,17 @@ public sealed class GameController
         };
     }
 
-    // Transcend: caller should subtract the cost before calling this (to keep UI flow unchanged)
-    public (int milkEarned, int newMilkStreak) DoTranscend(int baseMilkUpgradeCount, int currentMilkStreak)
+    public bool TryTranscend(BigDouble transcendCost, int baseMilkUpgradeCount, int currentMilkStreak, out int milkEarned, out int newMilkStreak)
     {
+        milkEarned = 0;
+        newMilkStreak = currentMilkStreak;
+
+        if (State.Point < transcendCost)
+            return false;
+
+        // Deduct visually (ResetService resets anyway)
+        var _afterCost = State.Point - transcendCost;
+
         var res = ResetService.DoTranscend(baseMilkUpgradeCount, currentMilkStreak);
 
         State = State with
@@ -166,6 +184,59 @@ public sealed class GameController
             AscChallenges = res.ChallengesCompleted
         };
 
-        return (res.MilkEarned, res.NewMilkStreak);
+        milkEarned = res.MilkEarned;
+        newMilkStreak = res.NewMilkStreak;
+        return true;
+    }
+
+    public void RecalculatePointMultiplier(
+        int effectiveUpgradeCount,
+        double prestigeEffect,
+        BigDouble prestigeIncrement,
+        BigDouble softCapDivisor,
+        bool challenge0Completed,
+        bool challenge0Or3Active,
+        BigDouble milkSpent0,
+        BigDouble hardCapPoint)
+    {
+        if (softCapDivisor == BigDouble.Zero)
+        {
+            State = State with
+            {
+                PointMultiplier = BigDouble.Zero,
+                Point = BigDouble.Min(State.Point, hardCapPoint)
+            };
+            return;
+        }
+
+        var newGain = GainMathService.ComputePointGain(
+            effectiveUpgradeCount,
+            prestigeEffect,
+            prestigeIncrement,
+            softCapDivisor,
+            challenge0Completed,
+            challenge0Or3Active,
+            milkSpent0);
+
+        State = State with { PointMultiplier = newGain };
+    }
+
+    public (BigDouble PassiveGain, int Seconds, int EffectiveSeconds, double OfflineMultiplier) ApplyOfflineProgress(
+        int seconds,
+        BigDouble milkSpent2,
+        Func<BigDouble, BigDouble, BigDouble> applySoftCap)
+    {
+        var result = OfflineProgressService.Compute(
+            currentPoints: State.Point,
+            pointGain: State.PointMultiplier,
+            generatorCount: State.GeneratorCount,
+            milkSpent2: milkSpent2,
+            seconds: seconds,
+            applySoftCap: applySoftCap);
+
+        if (result.PassiveGain > BigDouble.Zero)
+            State = State with { Point = State.Point + result.PassiveGain };
+
+        return (result.PassiveGain, result.Seconds, result.EffectiveSeconds, result.OfflineMultiplier);
     }
 }

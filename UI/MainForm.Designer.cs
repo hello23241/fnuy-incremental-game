@@ -207,7 +207,7 @@
             labelSoftCap.ForeColor = Color.Red;
             labelSoftCap.Location = new Point(19, 166);
             labelSoftCap.Name = "labelSoftCap";
-            labelSoftCap.Size = new Size(429, 20);
+            labelSoftCap.Size = new Size(476, 20);
             labelSoftCap.TabIndex = 0;
             labelSoftCap.Text = "Current points is over 10000000, gain is divided by 10000000";
             // 

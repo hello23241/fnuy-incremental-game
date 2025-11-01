@@ -1,7 +1,8 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using BreakInfinity;
+using System;
 using System.Drawing;
-using BreakInfinity;
+using System.Windows.Forms;
+using WinFormsApp1.Core.Game;
 
 namespace WinFormsApp1
 {
@@ -190,7 +191,7 @@ namespace WinFormsApp1
 
             labelBaseMilkDesc = new Label
             {
-                Text = $"{upgradeDescriptions[3]} (Cost: {100 + baseMilkUpgradeCount * 20} milk, Owned: {baseMilkUpgradeCount})",
+                Text = $"{upgradeDescriptions[3]} (Cost: {MilkShopService.GetBaseUpgradeCost(baseMilkUpgradeCount)} milk, Owned: {baseMilkUpgradeCount})",
                 Location = new Point(150, yBase),
                 Size = new Size(320, 30),
                 ForeColor = Color.DimGray
@@ -206,45 +207,28 @@ namespace WinFormsApp1
             buttonBaseMilkUpgrade.Click += ButtonBaseMilkUpgrade_Click;
             this.Controls.Add(buttonBaseMilkUpgrade);
         }
-        
+
         // Helper to refresh displayed labels after a successful purchase
         private void RefreshUIAfterPurchase(int upgradeIndex, BigDouble amount)
         {
-            // Update local milk estimate
-            try
-            {
-                milk -= amount;
-            }
-            catch { }
-
+            try { milk -= amount; } catch { }
             labelCurrency.Text = $"Milk: {milk}";
 
-            // Update spent labels (milkSpent is a shared array reference)
             if (labelSpent != null && milkSpent != null)
             {
                 for (int i = 0; i < labelSpent.Length; i++)
-                {
                     labelSpent[i].Text = $"Milk spent: {(milkSpent.Length > i ? milkSpent[i] : BigDouble.Zero)}";
-                }
             }
 
-            // Clear all input boxes after purchase
             if (customAmountBoxes != null)
             {
                 for (int i = 0; i < customAmountBoxes.Length; i++)
-                {
-                    if (customAmountBoxes[i] != null)
-                    {
-                        customAmountBoxes[i].Text = string.Empty;
-                    }
-                }
+                    if (customAmountBoxes[i] != null) customAmountBoxes[i].Text = string.Empty;
             }
 
-            // If boost 3 reached cap, adjust controls
             if (milkSpent != null && milkSpent.Length > 2 && milkSpent[2] >= new BigDouble(950))
             {
-                if (customAmountBoxes[2] != null)
-                    customAmountBoxes[2].Visible = false;
+                if (customAmountBoxes[2] != null) customAmountBoxes[2].Visible = false;
                 if (customSpendButtons[2] != null)
                 {
                     customSpendButtons[2].Text = "Maxed";
@@ -254,16 +238,13 @@ namespace WinFormsApp1
                 }
             }
 
-            // If base milk upgraded, increment local count and update description
             if (upgradeIndex == 3)
             {
                 baseMilkUpgradeCount++;
-                labelBaseMilkDesc.Text = $"{upgradeDescriptions[3]} (Cost: {100 + baseMilkUpgradeCount * 20} milk, Owned: {baseMilkUpgradeCount})";
+                labelBaseMilkDesc.Text = $"{upgradeDescriptions[3]} (Cost: {MilkShopService.GetBaseUpgradeCost(baseMilkUpgradeCount)} milk, Owned: {baseMilkUpgradeCount})";
             }
         }
-
-         // Allow digits, decimal, E/e, and control keys for BigDouble
-         private void CustomAmountBox_KeyPress_BigDouble(object sender, KeyPressEventArgs e)
+        private void CustomAmountBox_KeyPress_BigDouble(object sender, KeyPressEventArgs e)
          {
              if (!char.IsControl(e.KeyChar) &&
                  !char.IsDigit(e.KeyChar) &&
@@ -328,28 +309,27 @@ namespace WinFormsApp1
                  }
              }
          }
-
-         private void ButtonBaseMilkUpgrade_Click(object sender, EventArgs e)
-         {
-             int cost = 100 + baseMilkUpgradeCount * 20;
-             if (milk >= cost)
-             {
-                 bool success = spendMilkCallback?.Invoke(3, BigDouble.One) ?? false;
-                 if (success)
-                 {
-                    // Reflect the purchase locally and update UI, do not close
-                    RefreshUIAfterPurchase(3, BigDouble.One);
+        private int GetBaseMilkUpgradeCost() => 10 + baseMilkUpgradeCount * 2;
+        private void ButtonBaseMilkUpgrade_Click(object sender, EventArgs e)
+        {
+            int cost = MilkShopService.GetBaseUpgradeCost(baseMilkUpgradeCount);
+            if (milk >= cost)
+            {
+                bool success = spendMilkCallback?.Invoke(3, BigDouble.One) ?? false;
+                if (success)
+                {
+                    RefreshUIAfterPurchase(3, new BigDouble(cost));
                     MessageBox.Show($"Bought 1 base milk upgrade for {cost} milk!\nYour base daily milk is now {100 + baseMilkUpgradeCount * 10}.", "Upgrade Purchased");
-                 }
-                 else
-                 {
-                     MessageBox.Show("Not enough milk for this upgrade.", "Info");
-                 }
-             }
-             else
-             {
-                 MessageBox.Show("Not enough milk for this upgrade.", "Info");
-             }
-         }
-     }
+                }
+                else
+                {
+                    MessageBox.Show("Not enough milk for this upgrade.", "Info");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Not enough milk for this upgrade.", "Info");
+            }
+        }
+    }
  }

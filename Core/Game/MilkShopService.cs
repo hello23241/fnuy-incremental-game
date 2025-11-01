@@ -4,9 +4,11 @@ namespace WinFormsApp1.Core.Game;
 
 public static class MilkShopService
 {
+    public static int GetBaseUpgradeCost(int baseCount) => 10 + baseCount * 2;
+
     public static (bool Success, BigDouble NewMilk, int NewBaseCount, int Cost) TryBuyBaseGain(BigDouble milk, int baseCount)
     {
-        int cost = 10 + baseCount * 2;
+        int cost = GetBaseUpgradeCost(baseCount);
         if (milk >= cost)
             return (true, milk - cost, baseCount + 1, cost);
 
