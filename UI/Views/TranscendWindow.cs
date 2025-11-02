@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
 
-namespace WinFormsApp1
+namespace WinFormsApp1.UI.Views
 {
     public partial class TranscendWindow : Form
     {

@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace WinFormsApp1
+namespace WinFormsApp1.UI.Views
 {
     public partial class AscensionWindow : Form
     {
@@ -229,7 +229,7 @@ namespace WinFormsApp1
             }
             else
             {
-                labelBoosts.Text += $"3. [Locked] Unlocks buy max for upgrade\n\n";
+                labelBoosts.Text += $"3. [Locked] Buy max upgrades: Unlocks at 3 ascensions\n\n";
             }
 
             // Ascension milestone at 5
@@ -240,6 +240,15 @@ namespace WinFormsApp1
             else
             {
                 labelBoosts.Text += $"4. [Locked] Auto buy upgrade: Unlocks at 5 ascensions\n\n";
+            }
+            // Ascension milestone at 7
+            if (ascensionCount >= 7)
+            {
+                labelBoosts.Text += $"5. [Active] Challenge 3/4 nerfed to 2 seconds\n\n";
+            }
+            else
+            {
+                labelBoosts.Text += $"5. [Locked] Challenge 3/4 nerf: Unlocks at 6 ascensions\n\n";
             }
 
             // Event handlers for window controls

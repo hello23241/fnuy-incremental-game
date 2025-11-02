@@ -1,6 +1,6 @@
-﻿namespace WinFormsApp1
+﻿namespace WinFormsApp1.UI.Views
 {
-    partial class MainForm
+    partial class MainWindow
     {
         /// <summary>
         ///  Required designer variable.
@@ -56,6 +56,7 @@
             buttonPremiumShop = new Button();
             labelChallengeState = new Label();
             buttonInfoDailyGain = new Button();
+            buttonAutoBuy = new Button();
             panelTitleBar.SuspendLayout();
             SuspendLayout();
             // 
@@ -358,7 +359,19 @@
             buttonInfoDailyGain.UseVisualStyleBackColor = true;
             buttonInfoDailyGain.Click += buttonInfoDailyGain_Click;
             // 
-            // MainForm
+            // buttonAutoBuy
+            // 
+            buttonAutoBuy.BackColor = Color.White;
+            buttonAutoBuy.Location = new Point(757, 202);
+            buttonAutoBuy.Name = "buttonAutoBuy";
+            buttonAutoBuy.Size = new Size(110, 30);
+            buttonAutoBuy.TabIndex = 204;
+            buttonAutoBuy.Text = "Auto Buy: Off";
+            buttonAutoBuy.UseVisualStyleBackColor = false;
+            buttonAutoBuy.Visible = false;
+            buttonAutoBuy.Click += buttonAutoBuy_Click;
+            // 
+            // MainWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -389,9 +402,10 @@
             Controls.Add(labelPointsPerSecond);
             Controls.Add(buttonDebug);
             Controls.Add(buttonPremiumShop);
+            Controls.Add(buttonAutoBuy);
             FormBorderStyle = FormBorderStyle.None;
             MaximizeBox = false;
-            Name = "MainForm";
+            Name = "MainWindow";
             Text = "MainForm";
             panelTitleBar.ResumeLayout(false);
             panelTitleBar.PerformLayout();
@@ -423,6 +437,7 @@
         private System.Windows.Forms.Label labelCooldown;
         private System.Windows.Forms.Button buttonDebug;
         private System.Windows.Forms.Button buttonPremiumShop;
+        private System.Windows.Forms.Button buttonAutoBuy;
         private Label labelChallengeState;
         private Panel panelTitleBar;
         private Button buttonMinimize;

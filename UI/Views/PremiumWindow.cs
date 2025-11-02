@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using WinFormsApp1.Core.Game;
 
-namespace WinFormsApp1
+namespace WinFormsApp1.UI.Views
 {
     public class PremiumWindow : Form
     {

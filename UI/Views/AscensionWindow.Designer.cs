@@ -1,4 +1,4 @@
-﻿namespace WinFormsApp1
+﻿namespace WinFormsApp1.UI.Views
 {
     partial class AscensionWindow
     {

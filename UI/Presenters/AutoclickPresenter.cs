@@ -1,6 +1,6 @@
 ﻿using WinFormsApp1.Core.Game;
 
-namespace WinFormsApp1.Core.Game;
+namespace WinFormsApp1.UI.Presenters;
 
 public static class AutoclickPresenter
 {

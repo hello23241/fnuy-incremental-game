@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\NianBean.ico">
+    <EmbeddedResource Include="UI\Resources\NianBean.ico">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
@@ -59,6 +59,10 @@
     <EmbeddedResource Include="Resources\*.mp3" />
     <EmbeddedResource Include="Resources\*.aif" />
     <EmbeddedResource Include="Resources\*.aiff" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="UI\Controls\" />
   </ItemGroup>
 
   <PropertyGroup>

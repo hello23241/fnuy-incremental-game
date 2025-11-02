@@ -1,6 +1,6 @@
 ﻿using BreakInfinity;
 
-namespace WinFormsApp1.Core.Game;
+namespace WinFormsApp1.UI.Presenters;
 
 public readonly record struct HudTexts(
     string PointsText,

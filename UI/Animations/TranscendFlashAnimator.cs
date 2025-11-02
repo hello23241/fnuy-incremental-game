@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace WinFormsApp1.Core.Game;
+namespace WinFormsApp1.UI.Animations;
 
 // Smoothly cycles a color using HSV hue rotation.
 // Configure hue step per tick and HSV saturation/value for appearance.
