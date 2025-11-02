@@ -1,3 +1,5 @@
+using WinFormsApp1.UI.Views;
+
 namespace WinFormsApp1
 {
     internal static class Program
@@ -24,7 +26,7 @@ namespace WinFormsApp1
             };
 
             ApplicationConfiguration.Initialize();
-            Application.Run(new MainForm());
+            Application.Run(new MainWindow());
         }
         private static void LogCrash(Exception ex)
         {
