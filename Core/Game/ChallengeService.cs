@@ -11,7 +11,7 @@ public static class ChallengeService
             0 => "reach 1,000,000 points",
             1 => "prestige 8 times",
             2 => "buy 2 generators",
-            3 => "reach 25,000,000 points",
+            3 => "reach 10,000,000 points",
             _ => "complete the challenge"
         };
     }
@@ -23,7 +23,7 @@ public static class ChallengeService
             0 => point >= 1_000_000,
             1 => prestigeCount >= 8,
             2 => generatorCount >= 2,
-            3 => point >= 25_000_000,
+            3 => point >= 10_000_000,
             _ => false
         };
     }

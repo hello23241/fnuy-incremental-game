@@ -54,8 +54,8 @@ namespace WinFormsApp1.UI.Views
                 case 3:
                     challengeName = "Final challenge";
                     challengeDesc = "Challenges 1-3 all at once!";
-                    challengeReward = "Challenge Reward:\nSoft cap threshold\nincreased to 100k";
-                    challengeRequirement = "Requirement: Reach 25,000,000 points.";
+                    challengeReward = "Challenge Reward:\nSoft cap threshold\nincreased to 1m";
+                    challengeRequirement = "Requirement: Reach 10,000,000 points.";
                     break;
                 default:
                     challengeName = "Unknown challenge";

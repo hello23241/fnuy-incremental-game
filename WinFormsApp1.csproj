@@ -67,9 +67,9 @@
 
   <PropertyGroup>
     <!-- Keep these in sync with version.json -->
-    <AssemblyVersion>1.2.5</AssemblyVersion>
-    <FileVersion>1.2.5</FileVersion>
-    <Version>1.2.5</Version>
+    <AssemblyVersion>1.2.6</AssemblyVersion>
+    <FileVersion>1.2.6</FileVersion>
+    <Version>1.2.6</Version>
   </PropertyGroup>
 
 </Project>
