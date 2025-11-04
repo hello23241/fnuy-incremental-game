@@ -751,7 +751,7 @@ namespace WinFormsApp1.UI.Views
                     challenge2Completed: challenge2Completed);
 
                 // Ascend milestone >= 7: fixes click cooldown to 2s in challenges 3 and 4 (0-based indices 2 and 3)
-                if (ascendCount >= 7 && (activeChallengeIndex == 2 || activeChallengeIndex == 3))
+                if (ascendCount >= 6 && (activeChallengeIndex == 2 || activeChallengeIndex == 3))
                     return 2000;
 
                 return computed;

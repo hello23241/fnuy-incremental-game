@@ -23,8 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="UI\Controls\**" />
     <Compile Remove="Utils\NewFolder\**" />
+    <EmbeddedResource Remove="UI\Controls\**" />
     <EmbeddedResource Remove="Utils\NewFolder\**" />
+    <None Remove="UI\Controls\**" />
     <None Remove="Utils\NewFolder\**" />
   </ItemGroup>
 
@@ -61,15 +64,11 @@
     <EmbeddedResource Include="Resources\*.aiff" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="UI\Controls\" />
-  </ItemGroup>
-
   <PropertyGroup>
     <!-- Keep these in sync with version.json -->
-    <AssemblyVersion>1.2.6</AssemblyVersion>
-    <FileVersion>1.2.6</FileVersion>
-    <Version>1.2.6</Version>
+    <AssemblyVersion>1.2.7</AssemblyVersion>
+    <FileVersion>1.2.7</FileVersion>
+    <Version>1.2.7</Version>
   </PropertyGroup>
 
 </Project>
