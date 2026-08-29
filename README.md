@@ -1,6 +1,7 @@
 Inspired by every other incrementals I've played.
 Features:
-1 main reset layer, and looping.
+2 main reset layers, and looping.
+Second reset layer features challenges and milestone rewards.
 Simple gameplay.
 Auto-update (won't matter after 2025, read below).
 Offline gains and daily rewards that may or may not be easily manipulated.
